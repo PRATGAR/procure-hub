@@ -8,10 +8,10 @@ public final class SafeJoin {
     }
 
     public static Path within(Path base, String name) {
-        Path candidate = base.resolve(name);
+        Path candidate = base.resolve(name).normalize();
         if (!candidate.toString().startsWith(base.toString())) {
             throw new IllegalArgumentException("path leaves the base directory");
         }
-        return candidate.normalize();
+        return candidate;
     }
 }

@@ -50,9 +50,9 @@ public class SettlementController {
     }
 
     @GetMapping("/invoices/{id}/print")
-    public void print(@PathVariable long id, @RequestParam(required = false) String label,
+    public void print(@PathVariable long id, @RequestParam(required = false) WatermarkLabel label,
                       HttpServletResponse response) throws IOException {
-        writer.html(response, writer.page("Invoice", service.printView(id, label)));
+        writer.html(response, writer.page("Invoice", service.printView(id, label == null ? null : label.value())));
     }
 
     @GetMapping("/invoices/{id}/pdf")

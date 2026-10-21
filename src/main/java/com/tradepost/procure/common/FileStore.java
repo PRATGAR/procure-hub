@@ -19,9 +19,10 @@ public class FileStore {
     public static final String LABELS = "labels";
     public static final String ATTACHMENTS = "attachments";
     public static final String PDF = "pdf";
+    public static final String PDF_ARCHIVE = "pdf-archive";
 
     private static final List<String> AREAS =
-            List.of(MEDIA, THUMBS, DROP, ARCHIVES, EXPORTS, LABELS, ATTACHMENTS, PDF);
+            List.of(MEDIA, THUMBS, DROP, ARCHIVES, EXPORTS, LABELS, ATTACHMENTS, PDF, PDF_ARCHIVE);
 
     private final Path root;
 
@@ -37,6 +38,10 @@ public class FileStore {
         Path invoiceTemplate = root.resolve(PDF).resolve("invoice.txt");
         if (Files.notExists(invoiceTemplate)) {
             Files.writeString(invoiceTemplate, "INVOICE {{number}}\nReference: {{reference}}\n");
+        }
+        Path archivedInvoice = root.resolve(PDF_ARCHIVE).resolve("invoice-2023.txt");
+        if (Files.notExists(archivedInvoice)) {
+            Files.writeString(archivedInvoice, "ARCHIVED INVOICE {{number}}\nSettled to account ending 4401\n");
         }
         Path sampleNote = root.resolve(DROP).resolve("delivery-note-7781.txt");
         if (Files.notExists(sampleNote)) {

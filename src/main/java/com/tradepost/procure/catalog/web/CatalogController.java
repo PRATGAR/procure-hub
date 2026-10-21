@@ -112,7 +112,7 @@ public class CatalogController {
     }
 
     @GetMapping("/items/{id}/spec/summary")
-    public Map<String, Object> specSummary(@PathVariable long id, @RequestParam String field) {
-        return Map.of("field", field, "value", service.specSummary(id, field));
+    public Map<String, Object> specSummary(@PathVariable long id, @RequestParam SpecField field) {
+        return Map.of("field", field.value(), "value", service.specSummary(id, field.value()));
     }
 }

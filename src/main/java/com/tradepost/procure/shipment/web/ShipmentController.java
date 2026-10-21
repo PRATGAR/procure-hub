@@ -78,11 +78,11 @@ public class ShipmentController {
     }
 
     @GetMapping("/{id}/events/export")
-    public String exportEvents(@PathVariable long id, @RequestParam(defaultValue = "events.csv") String filename,
+    public String exportEvents(@PathVariable long id, @RequestParam(defaultValue = "events.csv") ExportName filename,
                                HttpServletResponse response) {
-        service.requireFilename(filename);
+        service.requireFilename(filename.value());
         String csv = service.exportEvents(id);
-        Cookie lastExport = new Cookie("last_export", filename);
+        Cookie lastExport = new Cookie("last_export", filename.value());
         lastExport.setPath("/api/shipments");
         response.addCookie(lastExport);
         response.setContentType("text/csv");

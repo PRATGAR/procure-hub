@@ -6,7 +6,6 @@ import com.tradepost.procure.common.ConflictException;
 import com.tradepost.procure.common.EvalContexts;
 import com.tradepost.procure.common.ExpressionService;
 import com.tradepost.procure.common.InvalidRequestException;
-import com.tradepost.procure.common.LocalTargets;
 import com.tradepost.procure.common.OutboundHttp;
 import com.tradepost.procure.config.TradepostProperties;
 import com.tradepost.procure.order.Order;
@@ -24,6 +23,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Random;
 import java.util.concurrent.ThreadLocalRandom;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClientException;
@@ -41,10 +41,12 @@ public class OrderService {
     private final ApplicationEventPublisher events;
     private final AuditWriter audit;
     private final TradepostProperties properties;
+    private final Random approvalCodes;
 
     public OrderService(OrderRepository orders, SupplierService suppliers, HookPolicy hookPolicy,
                         OutboundHttp outbound, ExpressionService expressions, ApplicationEventPublisher events,
-                        AuditWriter audit, TradepostProperties properties) {
+                        AuditWriter audit, TradepostProperties properties,
+                        @Qualifier("approvalCodes") Random approvalCodes) {
         this.orders = orders;
         this.suppliers = suppliers;
         this.hookPolicy = hookPolicy;
@@ -53,6 +55,7 @@ public class OrderService {
         this.events = events;
         this.audit = audit;
         this.properties = properties;
+        this.approvalCodes = approvalCodes;
     }
 
     public long create(CreateOrderRequest request) {
@@ -95,7 +98,7 @@ public class OrderService {
         if (order.deliveryHook() != null && !order.deliveryHook().isBlank()) {
             hookPolicy.require(order.deliveryHook());
         }
-        String code = Integer.toString(100000 + new Random().nextInt(900000));
+        String code = Integer.toString(100000 + approvalCodes.nextInt(900000));
         orders.markSubmitted(id, code);
         audit.append(Actors.current(), "order.submitted", order.poNumber());
     }
@@ -116,7 +119,7 @@ public class OrderService {
 
     public String approvalLandingTarget(long id, String returnTo) {
         get(id);
-        return LocalTargets.accept(returnTo, "/api/orders/" + id);
+        return returnTo == null ? "/api/orders/" + id : returnTo;
     }
 
     public Map<String, Object> send(long id) {

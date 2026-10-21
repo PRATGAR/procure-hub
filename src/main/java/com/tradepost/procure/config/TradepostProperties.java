@@ -15,12 +15,16 @@ public record TradepostProperties(
         Map<String, PartnerEndpoints> partnerEndpoints,
         Map<String, String> dispatchUrls,
         String checkoutUrl,
-        String pspBaseUrl) {
+        String pspBaseUrl,
+        Security security) {
 
     public record Storage(String root) {
     }
 
     public record Directory(String url, String baseDn) {
+    }
+
+    public record Security(long pinSeed) {
     }
 
     public record PartnerEndpoints(String events, String health, String catalog, String docs) {

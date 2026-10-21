@@ -15,6 +15,7 @@ import java.security.SecureRandom;
 import java.util.HexFormat;
 import java.util.Map;
 import java.util.Random;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClientException;
 
@@ -25,12 +26,15 @@ public class IntegrationService {
     private final PartnerUrls urls;
     private final OutboundHttp outbound;
     private final AuditWriter audit;
+    private final Random secrets;
 
-    public IntegrationService(PartnerRepository partners, PartnerUrls urls, OutboundHttp outbound, AuditWriter audit) {
+    public IntegrationService(PartnerRepository partners, PartnerUrls urls, OutboundHttp outbound, AuditWriter audit,
+                              @Qualifier("webhookSecrets") Random secrets) {
         this.partners = partners;
         this.urls = urls;
         this.outbound = outbound;
         this.audit = audit;
+        this.secrets = secrets;
     }
 
     public long createPartner(CreatePartnerRequest request) {
@@ -61,7 +65,7 @@ public class IntegrationService {
 
     public Map<String, Object> registerWebhook(RegisterWebhookRequest request) {
         partners.find(request.partnerId());
-        String secret = Long.toHexString(new Random().nextLong());
+        String secret = Long.toHexString(secrets.nextLong());
         long id = partners.insertWebhook(request.partnerId(), request.url().trim(), request.eventType(), secret);
         audit.append(Actors.current(), "webhook.registered", "webhook " + id);
         return Map.of("id", id, "secret", secret);

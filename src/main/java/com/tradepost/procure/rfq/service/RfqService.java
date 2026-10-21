@@ -19,6 +19,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Random;
 import java.util.UUID;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -29,14 +30,16 @@ public class RfqService {
     private final BidRepository bids;
     private final SupplierService suppliers;
     private final AuditWriter audit;
+    private final Random pins;
 
     public RfqService(RfqRepository rfqs, InvitationRepository invitations, BidRepository bids,
-                      SupplierService suppliers, AuditWriter audit) {
+                      SupplierService suppliers, AuditWriter audit, @Qualifier("invitationPins") Random pins) {
         this.rfqs = rfqs;
         this.invitations = invitations;
         this.bids = bids;
         this.suppliers = suppliers;
         this.audit = audit;
+        this.pins = pins;
     }
 
     public long create(CreateRfqRequest request) {
@@ -64,7 +67,7 @@ public class RfqService {
         for (Long supplierId : request.supplierIds()) {
             suppliers.get(supplierId);
             String token = UUID.randomUUID().toString().replace("-", "");
-            String pin = String.valueOf(new Random().nextInt(900000) + 100000);
+            String pin = String.valueOf(pins.nextInt(900000) + 100000);
             long invitationId = invitations.insert(rfqId, supplierId, token, pin);
             issued.add(Map.of("invitationId", invitationId, "supplierId", supplierId, "token", token));
         }

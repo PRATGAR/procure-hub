@@ -70,9 +70,9 @@ public class OrderController {
     }
 
     @GetMapping("/{id}/approve-link")
-    public void approveLink(@PathVariable long id, @RequestParam(required = false) String returnTo,
+    public void approveLink(@PathVariable long id, @RequestParam(required = false) ReturnTarget returnTo,
                             HttpServletResponse response) throws IOException {
-        String target = service.approvalLandingTarget(id, returnTo);
+        String target = service.approvalLandingTarget(id, returnTo == null ? null : returnTo.value());
         redirector.to(response, target);
     }
 

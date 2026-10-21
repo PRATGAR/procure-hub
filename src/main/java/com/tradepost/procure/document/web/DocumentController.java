@@ -86,9 +86,9 @@ public class DocumentController {
     }
 
     @DeleteMapping("/archives/{name}")
-    public Map<String, Object> deleteArchive(@PathVariable String name) throws IOException {
-        boolean deleted = service.deleteArchive(name);
-        return Map.of("name", name, "deleted", deleted);
+    public Map<String, Object> deleteArchive(@PathVariable ArchiveName name) throws IOException {
+        boolean deleted = service.deleteArchive(name.value());
+        return Map.of("name", name.value(), "deleted", deleted);
     }
 
     @PostMapping(value = "/attachments", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)

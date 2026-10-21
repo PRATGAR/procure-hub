@@ -4,6 +4,7 @@ import com.tradepost.procure.common.Redirector;
 import com.tradepost.procure.directory.service.DirectoryService;
 import com.tradepost.procure.directory.web.DirectoryDtos.ResolveRequest;
 import com.tradepost.procure.directory.web.DirectoryDtos.SsoLinkRequest;
+import com.tradepost.procure.directory.web.DirectoryDtos.UserQuery;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import java.io.IOException;
@@ -33,8 +34,8 @@ public class DirectoryController {
     }
 
     @GetMapping("/users")
-    public List<Map<String, String>> find(@RequestParam String uid) throws NamingException {
-        return service.findUser(uid);
+    public List<Map<String, String>> find(@Valid UserQuery query) throws NamingException {
+        return service.findUser(query.uid());
     }
 
     @GetMapping("/users/search")

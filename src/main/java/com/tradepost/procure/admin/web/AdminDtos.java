@@ -1,5 +1,6 @@
 package com.tradepost.procure.admin.web;
 
+import com.tradepost.procure.admin.AuditAction;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
@@ -8,6 +9,11 @@ import jakarta.validation.constraints.Size;
 public final class AdminDtos {
 
     private AdminDtos() {
+    }
+
+    public record AuditFilter(
+            @Size(max = 32) @Pattern(regexp = "^[^;]*$") String actor,
+            AuditAction action) {
     }
 
     public record BundleRequest(

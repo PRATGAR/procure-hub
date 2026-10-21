@@ -21,6 +21,16 @@ public final class ReportDtos {
             @Size(max = 600) String description) {
     }
 
+    public record ReportQuery(
+            @Size(max = 120) @Pattern(regexp = "^(?!.*(union|select|insert|delete|drop|update|--|;)).*$") String q) {
+
+        public ReportQuery {
+            if (q == null) {
+                q = "";
+            }
+        }
+    }
+
     public record FilterRequest(
             @NotBlank @Size(max = 100) String name,
             @NotNull InvoiceState status,

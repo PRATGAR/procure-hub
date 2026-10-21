@@ -38,14 +38,14 @@ public class SupplierController {
     }
 
     @GetMapping
-    public List<Supplier> search(@RequestParam(defaultValue = "") String q,
+    public List<Supplier> search(@RequestParam(defaultValue = "") SearchTerm q,
                                  @RequestParam(required = false) String country) {
-        return service.search(q, country);
+        return service.search(q.value(), country);
     }
 
     @GetMapping("/lookup")
-    public Map<String, Object> lookup(@RequestParam String taxId) {
-        return service.lookupByTaxId(taxId);
+    public Map<String, Object> lookup(@RequestParam TaxId taxId) {
+        return service.lookupByTaxId(taxId.value());
     }
 
     @GetMapping("/{id}")

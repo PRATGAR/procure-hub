@@ -61,3 +61,5 @@ tradepost:
     portal: https://dispatch.tradepost.example.com/portal-inbox
   checkout-url: https://checkout.psp.example.com/session
   psp-base-url: https://psp.example.com/v1
+  security:
+    pin-seed: 4711

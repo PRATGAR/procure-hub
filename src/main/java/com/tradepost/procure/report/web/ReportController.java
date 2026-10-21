@@ -8,6 +8,7 @@ import com.tradepost.procure.report.service.ReportService;
 import com.tradepost.procure.report.web.ReportDtos.CreateReportRequest;
 import com.tradepost.procure.report.web.ReportDtos.ExportPdfRequest;
 import com.tradepost.procure.report.web.ReportDtos.FilterRequest;
+import com.tradepost.procure.report.web.ReportDtos.ReportQuery;
 import com.tradepost.procure.report.web.ReportDtos.ScheduleRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
@@ -44,8 +45,8 @@ public class ReportController {
     }
 
     @GetMapping
-    public List<SavedReport> search(@RequestParam(defaultValue = "") String q) {
-        return service.search(q);
+    public List<SavedReport> search(@Valid ReportQuery query) {
+        return service.search(query.q());
     }
 
     @PostMapping("/{id}/run")

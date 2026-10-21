@@ -1,6 +1,5 @@
 package com.tradepost.procure.admin.web;
 
-import com.tradepost.procure.admin.AuditAction;
 import com.tradepost.procure.admin.PurgeTarget;
 import com.tradepost.procure.admin.service.AuditService;
 import com.tradepost.procure.admin.service.BundleService;
@@ -9,6 +8,7 @@ import com.tradepost.procure.admin.service.PurgeService;
 import com.tradepost.procure.admin.service.SettingsService;
 import com.tradepost.procure.admin.service.TaskService;
 import com.tradepost.procure.admin.service.TemplateTestService;
+import com.tradepost.procure.admin.web.AdminDtos.AuditFilter;
 import com.tradepost.procure.admin.web.AdminDtos.BundleRequest;
 import com.tradepost.procure.admin.web.AdminDtos.SettingsRequest;
 import com.tradepost.procure.admin.web.AdminDtos.TemplateTestRequest;
@@ -56,9 +56,8 @@ public class AdminController {
     }
 
     @GetMapping("/audit")
-    public List<?> audit(@RequestParam(required = false) String actor,
-                         @RequestParam(required = false) AuditAction action) {
-        return auditService.search(actor, action);
+    public List<?> audit(@Valid AuditFilter filter) {
+        return auditService.search(filter.actor(), filter.action());
     }
 
     @GetMapping(value = "/audit/export", produces = "text/plain")
@@ -67,13 +66,13 @@ public class AdminController {
     }
 
     @GetMapping("/stats")
-    public List<Map<String, Object>> stats(@RequestParam ReportEntity entity, @RequestParam String by) {
-        return auditService.stats(entity, by);
+    public List<Map<String, Object>> stats(@RequestParam ReportEntity entity, @RequestParam StatColumn by) {
+        return auditService.stats(entity, by.value());
     }
 
     @PostMapping("/tasks/{name}/run")
-    public Map<String, Object> runTask(@PathVariable String name, @RequestParam String cutoff) {
-        return taskService.run(name, cutoff);
+    public Map<String, Object> runTask(@PathVariable String name, @RequestParam Cutoff cutoff) {
+        return taskService.run(name, cutoff.value());
     }
 
     @GetMapping("/diagnostics/ping")
