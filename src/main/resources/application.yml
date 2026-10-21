@@ -1,0 +1,63 @@
+spring:
+  application:
+    name: tradepost-procurement
+  datasource:
+    url: jdbc:h2:mem:procure;MODE=PostgreSQL;DB_CLOSE_DELAY=-1
+    username: sa
+    password: ""
+  sql:
+    init:
+      mode: always
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: none
+  servlet:
+    multipart:
+      max-file-size: 5MB
+      max-request-size: 6MB
+
+server:
+  port: 8080
+
+tradepost:
+  storage:
+    root: ./data/store
+  directory:
+    url: ldap://ldap.tradepost.example.com:389
+    base-dn: dc=tradepost,dc=example
+  trusted-return-hosts:
+    - portal.tradepost.example.com
+    - sso.tradepost.example.com
+  approved-callback-hosts:
+    - hooks.partner-one.example.com
+    - notify.tradepost.example.com
+  partner-hosts:
+    - api.acmefreight.example.com
+    - api.nordparts.example.com
+    - api.helvetia-supply.example.com
+  carrier-base-urls:
+    nordex: https://tracking.nordex.example.com/v2/track/
+    cargoline: https://api.cargoline.example.com/shipments/
+    bluepost: https://track.bluepost.example.com/api/
+  partner-endpoints:
+    acmefreight:
+      events: https://hooks.acmefreight.example.com/tradepost/events
+      health: https://api.acmefreight.example.com/health
+      catalog: https://api.acmefreight.example.com/v1/catalog
+      docs: https://docs.acmefreight.example.com/integration
+    nordparts:
+      events: https://hooks.nordparts.example.com/tradepost/events
+      health: https://api.nordparts.example.com/health
+      catalog: https://api.nordparts.example.com/v1/catalog
+      docs: https://docs.nordparts.example.com/integration
+    helvetia:
+      events: https://hooks.helvetia-supply.example.com/events
+      health: https://api.helvetia-supply.example.com/status
+      catalog: https://api.helvetia-supply.example.com/v2/catalog
+      docs: https://developers.helvetia-supply.example.com
+  dispatch-urls:
+    webhook: https://dispatch.tradepost.example.com/purchase-orders
+    portal: https://dispatch.tradepost.example.com/portal-inbox
+  checkout-url: https://checkout.psp.example.com/session
+  psp-base-url: https://psp.example.com/v1
