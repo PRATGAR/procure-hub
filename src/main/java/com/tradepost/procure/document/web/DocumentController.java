@@ -14,7 +14,6 @@ import javax.xml.parsers.ParserConfigurationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -83,12 +82,6 @@ public class DocumentController {
                                        @RequestParam(defaultValue = "out") String prefix) {
         CommandResult result = service.publish(id, format, prefix);
         return Map.of("documentId", id, "format", format, "exitCode", result.exitCode());
-    }
-
-    @DeleteMapping("/archives/{name}")
-    public Map<String, Object> deleteArchive(@PathVariable ArchiveName name) throws IOException {
-        boolean deleted = service.deleteArchive(name.value());
-        return Map.of("name", name.value(), "deleted", deleted);
     }
 
     @PostMapping(value = "/attachments", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)

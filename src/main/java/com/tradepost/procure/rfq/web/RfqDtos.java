@@ -19,7 +19,17 @@ public final class RfqDtos {
             @NotBlank @Size(max = 160) String title,
             @Size(max = 2000) String description,
             @Size(max = 24) String categoryCode,
+            @NotBlank @Size(max = 40) String region,
             @NotNull @Future LocalDate closesAt) {
+    }
+
+    public record Landing(long rfqId, String title, String status, String closesAt, String invitation) {
+    }
+
+    public record BidAccepted(long bidId) {
+    }
+
+    public record QuestionAccepted(long questionId) {
     }
 
     public record InviteRequest(@NotEmpty @Size(max = 20) List<Long> supplierIds) {

@@ -23,7 +23,31 @@ public final class SupplierDtos {
     public record ProfileRequest(
             @Size(max = 160) String displayName,
             @Size(max = 2000) String description,
-            @Size(max = 300) String website) {
+            @Size(max = 300) String website,
+            @Size(max = 20) String taxId) {
+    }
+
+    public record CertificateRequest(
+            @NotBlank @Size(max = 120) String issuer,
+            @NotBlank @Size(max = 200) String fileName) {
+    }
+
+    public record Created(long id, String status) {
+    }
+
+    public record EntityId(long id) {
+    }
+
+    public record ProfileUpdated(long id, boolean updated) {
+    }
+
+    public record BankStatus(long supplierId, String status) {
+    }
+
+    public record WebsiteCheck(long supplierId, boolean reachable, int bytes) {
+    }
+
+    public record RegistryCheck(long supplierId, int registrations) {
     }
 
     public record ContactRequest(

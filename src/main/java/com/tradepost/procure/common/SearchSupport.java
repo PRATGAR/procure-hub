@@ -16,8 +16,8 @@ public class SearchSupport {
         this.jdbc = jdbc;
     }
 
-    public List<Map<String, Object>> page(String select, String where, String orderBy, int limit) {
+    public List<Map<String, Object>> page(String select, String where, String orderBy, int limit, Object... args) {
         String sql = select + where + orderBy + " LIMIT " + QueryFragments.clampLimit(limit, CEILING);
-        return jdbc.queryForList(sql);
+        return jdbc.queryForList(sql, args);
     }
 }

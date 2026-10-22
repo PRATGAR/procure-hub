@@ -90,6 +90,10 @@ public class OrderRepository {
         jdbc.update("UPDATE purchase_orders SET delivery_hook = ? WHERE id = ?", hook, id);
     }
 
+    public void updateReturnUrl(long id, String returnUrl) {
+        jdbc.update("UPDATE purchase_orders SET return_url = ? WHERE id = ?", returnUrl, id);
+    }
+
     public void markSubmitted(long id, String approvalCode) {
         jdbc.update("UPDATE purchase_orders SET status = 'SUBMITTED', approval_code = ? WHERE id = ?", approvalCode, id);
     }

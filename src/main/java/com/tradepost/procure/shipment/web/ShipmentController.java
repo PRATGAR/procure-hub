@@ -2,10 +2,17 @@ package com.tradepost.procure.shipment.web;
 
 import com.tradepost.procure.shipment.Carrier;
 import com.tradepost.procure.shipment.service.ShipmentService;
+import com.tradepost.procure.shipment.web.ShipmentDtos.CallbackApplied;
 import com.tradepost.procure.shipment.web.ShipmentDtos.CarrierEvent;
+import com.tradepost.procure.shipment.web.ShipmentDtos.CarrierLoad;
+import com.tradepost.procure.shipment.web.ShipmentDtos.Created;
 import com.tradepost.procure.shipment.web.ShipmentDtos.CreateShipmentRequest;
 import com.tradepost.procure.shipment.web.ShipmentDtos.LabelFile;
-import jakarta.servlet.http.Cookie;
+import com.tradepost.procure.shipment.web.ShipmentDtos.LabelRequested;
+import com.tradepost.procure.shipment.web.ShipmentDtos.NotifyRequest;
+import com.tradepost.procure.shipment.web.ShipmentDtos.NotifyUrlSaved;
+import com.tradepost.procure.shipment.web.ShipmentDtos.ShipmentDetail;
+import com.tradepost.procure.shipment.web.ShipmentDtos.TrackingRefresh;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import java.io.IOException;
@@ -16,6 +23,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -32,9 +40,9 @@ public class ShipmentController {
     }
 
     @PostMapping
-    public ResponseEntity<Map<String, Object>> create(@Valid @RequestBody CreateShipmentRequest request) {
+    public ResponseEntity<Created> create(@Valid @RequestBody CreateShipmentRequest request) {
         long id = service.create(request);
-        return ResponseEntity.status(HttpStatus.CREATED).body(Map.of("id", id, "status", "CREATED"));
+        return ResponseEntity.status(HttpStatus.CREATED).body(new Created(id, "CREATED"));
     }
 
     @GetMapping
@@ -45,17 +53,17 @@ public class ShipmentController {
     }
 
     @GetMapping("/{id}")
-    public Map<String, Object> detail(@PathVariable long id) {
+    public ShipmentDetail detail(@PathVariable long id) {
         return service.detail(id);
     }
 
     @GetMapping("/{id}/carrier-load")
-    public Map<String, Object> carrierLoad(@PathVariable long id) {
+    public CarrierLoad carrierLoad(@PathVariable long id) {
         return service.carrierLoad(id);
     }
 
     @PostMapping("/{id}/label")
-    public Map<String, Object> requestLabel(@PathVariable long id) {
+    public LabelRequested requestLabel(@PathVariable long id) {
         return service.requestLabel(id);
     }
 
@@ -68,24 +76,17 @@ public class ShipmentController {
     }
 
     @PostMapping("/{id}/refresh")
-    public Map<String, Object> refresh(@PathVariable long id) {
+    public TrackingRefresh refresh(@PathVariable long id) {
         return service.refresh(id);
     }
 
-    @PostMapping("/callbacks/{carrier}")
-    public Map<String, Object> callback(@PathVariable Carrier carrier, @Valid @RequestBody CarrierEvent event) {
-        return service.applyCallback(carrier, event);
+    @PutMapping("/{id}/notify-url")
+    public NotifyUrlSaved saveNotifyUrl(@PathVariable long id, @Valid @RequestBody NotifyRequest request) {
+        return service.saveNotifyUrl(id, request.url());
     }
 
-    @GetMapping("/{id}/events/export")
-    public String exportEvents(@PathVariable long id, @RequestParam(defaultValue = "events.csv") ExportName filename,
-                               HttpServletResponse response) {
-        service.requireFilename(filename.value());
-        String csv = service.exportEvents(id);
-        Cookie lastExport = new Cookie("last_export", filename.value());
-        lastExport.setPath("/api/shipments");
-        response.addCookie(lastExport);
-        response.setContentType("text/csv");
-        return csv;
+    @PostMapping("/callbacks/{carrier}")
+    public CallbackApplied callback(@PathVariable Carrier carrier, @Valid @RequestBody CarrierEvent event) {
+        return service.applyCallback(carrier, event);
     }
 }

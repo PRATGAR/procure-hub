@@ -6,9 +6,15 @@ import com.tradepost.procure.report.SavedReport;
 import com.tradepost.procure.report.SummaryDimension;
 import com.tradepost.procure.report.service.ReportService;
 import com.tradepost.procure.report.web.ReportDtos.CreateReportRequest;
+import com.tradepost.procure.report.web.ReportDtos.Created;
+import com.tradepost.procure.report.web.ReportDtos.Dispatched;
 import com.tradepost.procure.report.web.ReportDtos.ExportPdfRequest;
 import com.tradepost.procure.report.web.ReportDtos.FilterRequest;
+import com.tradepost.procure.report.web.ReportDtos.FilterRun;
+import com.tradepost.procure.report.web.ReportDtos.PdfExported;
 import com.tradepost.procure.report.web.ReportDtos.ReportQuery;
+import com.tradepost.procure.report.web.ReportDtos.RunQueued;
+import com.tradepost.procure.report.web.ReportDtos.ScheduleCreated;
 import com.tradepost.procure.report.web.ReportDtos.ScheduleRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
@@ -39,9 +45,9 @@ public class ReportController {
     }
 
     @PostMapping
-    public ResponseEntity<Map<String, Object>> create(@Valid @RequestBody CreateReportRequest request) {
+    public ResponseEntity<Created> create(@Valid @RequestBody CreateReportRequest request) {
         long id = service.create(request);
-        return ResponseEntity.status(HttpStatus.CREATED).body(Map.of("id", id));
+        return ResponseEntity.status(HttpStatus.CREATED).body(new Created(id));
     }
 
     @GetMapping
@@ -49,19 +55,24 @@ public class ReportController {
         return service.search(query.q());
     }
 
+    @GetMapping("/{id}/similar")
+    public List<SavedReport> similar(@PathVariable long id) {
+        return service.similar(id);
+    }
+
     @PostMapping("/{id}/run")
-    public Map<String, Object> run(@PathVariable long id) {
+    public RunQueued run(@PathVariable long id) {
         return service.run(id);
     }
 
     @PostMapping("/filters")
-    public ResponseEntity<Map<String, Object>> createFilter(@Valid @RequestBody FilterRequest request) {
+    public ResponseEntity<Created> createFilter(@Valid @RequestBody FilterRequest request) {
         long id = service.createFilter(request);
-        return ResponseEntity.status(HttpStatus.CREATED).body(Map.of("id", id));
+        return ResponseEntity.status(HttpStatus.CREATED).body(new Created(id));
     }
 
     @GetMapping("/filters/{id}/run")
-    public Map<String, Object> runFilter(@PathVariable long id) {
+    public FilterRun runFilter(@PathVariable long id) {
         return service.runFilter(id);
     }
 
@@ -77,13 +88,18 @@ public class ReportController {
     }
 
     @PostMapping("/{id}/schedule")
-    public ResponseEntity<Map<String, Object>> schedule(@PathVariable long id,
-                                                        @Valid @RequestBody ScheduleRequest request) {
+    public ResponseEntity<ScheduleCreated> schedule(@PathVariable long id,
+                                                    @Valid @RequestBody ScheduleRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED).body(service.schedule(id, request));
     }
 
+    @PostMapping("/schedules/{scheduleId}/dispatch")
+    public Dispatched dispatch(@PathVariable long scheduleId) {
+        return service.dispatch(scheduleId);
+    }
+
     @PostMapping("/{id}/export-pdf")
-    public Map<String, Object> exportPdf(@PathVariable long id, @Valid @RequestBody ExportPdfRequest request) {
+    public PdfExported exportPdf(@PathVariable long id, @Valid @RequestBody ExportPdfRequest request) {
         return service.exportPdf(id, request);
     }
 
@@ -96,11 +112,6 @@ public class ReportController {
     public byte[] exportByName(@RequestParam String name, HttpServletResponse response) throws IOException {
         response.setContentType(MediaType.APPLICATION_OCTET_STREAM_VALUE);
         return service.exportByName(name);
-    }
-
-    @GetMapping("/{id}/print")
-    public void print(@PathVariable long id, HttpServletResponse response) throws IOException {
-        writer.html(response, service.print(id));
     }
 
     @GetMapping("/runs")

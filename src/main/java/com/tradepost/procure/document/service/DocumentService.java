@@ -66,8 +66,8 @@ public class DocumentService {
         if (documents.fingerprintKnown(fingerprint)) {
             throw new ConflictException("this file is already registered for the owner");
         }
-        String displayName = Html.escape(request.displayName() == null || request.displayName().isBlank()
-                ? fileName : request.displayName().trim());
+        String displayName = request.displayName() == null || request.displayName().isBlank()
+                ? fileName : request.displayName().trim();
         Document document = new Document(0, request.ownerType().name(), request.ownerId(), fileName, displayName,
                 request.convertOpts(), ArchiveNames.generate(), fingerprint, "REGISTERED");
         long id = documents.insert(document);
@@ -135,11 +135,6 @@ public class DocumentService {
             }
         }
         return fields;
-    }
-
-    public boolean deleteArchive(String name) throws IOException {
-        Path file = store.locate(FileStore.ARCHIVES, name);
-        return Files.deleteIfExists(file);
     }
 
     public Map<String, Object> attach(MultipartFile file, OwnerType ownerType, long ownerId) throws IOException {

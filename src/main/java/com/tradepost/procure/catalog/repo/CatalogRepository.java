@@ -1,11 +1,14 @@
 package com.tradepost.procure.catalog.repo;
 
+import com.tradepost.procure.catalog.Feed;
 import com.tradepost.procure.catalog.Item;
 import com.tradepost.procure.catalog.ItemRef;
 import com.tradepost.procure.catalog.Media;
+import com.tradepost.procure.catalog.SavedSearch;
 import com.tradepost.procure.catalog.Thumbnail;
 import com.tradepost.procure.common.Inserts;
 import com.tradepost.procure.common.SortDirection;
+import com.tradepost.procure.common.SqlParts;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import jakarta.persistence.Query;
@@ -91,7 +94,8 @@ public class CatalogRepository {
     }
 
     public List<ItemRef> relatedByTag(long itemId, String tag) {
-        String sql = "SELECT id, sku, name FROM catalog_items WHERE tags LIKE '%" + tag + "%' AND id <> ?1";
+        String condition = SqlParts.contains("tags", tag);
+        String sql = "SELECT id, sku, name FROM catalog_items WHERE " + condition + " AND id <> ?1";
         Query query = em.createNativeQuery(sql);
         query.setParameter(1, itemId);
         return refs(query.getResultList());
@@ -141,6 +145,51 @@ public class CatalogRepository {
     public List<Media> mediaFor(long itemId) {
         return jdbc.query("SELECT id, item_id, stored_name, caption, content_type FROM catalog_media WHERE item_id = ?",
                 MEDIA_MAPPER, itemId);
+    }
+
+    public long insertFeed(String format, String payload) {
+        Map<String, Object> row = new HashMap<>();
+        row.put("format", format);
+        row.put("payload", payload);
+        return inserts.into("catalog_feeds", row);
+    }
+
+    public Feed findFeed(long id) {
+        return jdbc.queryForObject("SELECT id, format, payload FROM catalog_feeds WHERE id = ?",
+                (rs, n) -> new Feed(rs.getLong("id"), rs.getString("format"), rs.getString("payload")), id);
+    }
+
+    public void savePrefs(long itemId, String specField, String labelFormat) {
+        int touched = jdbc.update("UPDATE catalog_item_prefs SET spec_field = ?, label_format = ? WHERE item_id = ?",
+                specField, labelFormat, itemId);
+        if (touched == 0) {
+            jdbc.update("INSERT INTO catalog_item_prefs (item_id, spec_field, label_format) VALUES (?, ?, ?)",
+                    itemId, specField, labelFormat);
+        }
+    }
+
+    public Optional<String> specField(long itemId) {
+        List<String> found = jdbc.queryForList("SELECT spec_field FROM catalog_item_prefs WHERE item_id = ? AND spec_field IS NOT NULL",
+                String.class, itemId);
+        return found.stream().findFirst();
+    }
+
+    public Optional<String> labelFormat(long itemId) {
+        List<String> found = jdbc.queryForList("SELECT label_format FROM catalog_item_prefs WHERE item_id = ? AND label_format IS NOT NULL",
+                String.class, itemId);
+        return found.stream().findFirst();
+    }
+
+    public long insertSearch(String name, String term) {
+        Map<String, Object> row = new HashMap<>();
+        row.put("name", name);
+        row.put("term", term);
+        return inserts.into("catalog_searches", row);
+    }
+
+    public SavedSearch findSearch(long id) {
+        return jdbc.queryForObject("SELECT id, name, term FROM catalog_searches WHERE id = ?",
+                (rs, n) -> new SavedSearch(rs.getLong("id"), rs.getString("name"), rs.getString("term")), id);
     }
 
     private List<ItemRef> refs(List<?> rows) {

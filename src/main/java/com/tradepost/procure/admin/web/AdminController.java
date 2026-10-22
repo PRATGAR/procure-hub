@@ -6,13 +6,14 @@ import com.tradepost.procure.admin.service.BundleService;
 import com.tradepost.procure.admin.service.DiagnosticsService;
 import com.tradepost.procure.admin.service.PurgeService;
 import com.tradepost.procure.admin.service.SettingsService;
+import com.tradepost.procure.admin.service.StatPresetService;
 import com.tradepost.procure.admin.service.TaskService;
 import com.tradepost.procure.admin.service.TemplateTestService;
 import com.tradepost.procure.admin.web.AdminDtos.AuditFilter;
 import com.tradepost.procure.admin.web.AdminDtos.BundleRequest;
 import com.tradepost.procure.admin.web.AdminDtos.SettingsRequest;
+import com.tradepost.procure.admin.web.AdminDtos.StatPresetRequest;
 import com.tradepost.procure.admin.web.AdminDtos.TemplateTestRequest;
-import com.tradepost.procure.report.ReportEntity;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Pattern;
 import java.io.IOException;
@@ -42,10 +43,12 @@ public class AdminController {
     private final SettingsService settings;
     private final TemplateTestService templates;
     private final PurgeService purgeService;
+    private final StatPresetService presets;
 
     public AdminController(AuditService auditService, TaskService taskService, DiagnosticsService diagnostics,
                            BundleService bundles, SettingsService settings, TemplateTestService templates,
-                           PurgeService purgeService) {
+                           PurgeService purgeService, StatPresetService presets) {
+        this.presets = presets;
         this.auditService = auditService;
         this.taskService = taskService;
         this.diagnostics = diagnostics;
@@ -57,7 +60,12 @@ public class AdminController {
 
     @GetMapping("/audit")
     public List<?> audit(@Valid AuditFilter filter) {
-        return auditService.search(filter.actor(), filter.action());
+        return auditService.search(filter.action());
+    }
+
+    @GetMapping("/audit/{entryId}/related")
+    public List<?> relatedAudit(@PathVariable long entryId) {
+        return auditService.related(entryId);
     }
 
     @GetMapping(value = "/audit/export", produces = "text/plain")
@@ -65,19 +73,30 @@ public class AdminController {
         return auditService.export();
     }
 
-    @GetMapping("/stats")
-    public List<Map<String, Object>> stats(@RequestParam ReportEntity entity, @RequestParam StatColumn by) {
-        return auditService.stats(entity, by.value());
+    @PostMapping("/stat-presets")
+    public ResponseEntity<Map<String, Object>> savePreset(@Valid @RequestBody StatPresetRequest request) {
+        long id = presets.save(request);
+        return ResponseEntity.status(HttpStatus.CREATED).body(Map.of("id", id));
+    }
+
+    @GetMapping("/stat-presets/{id}/run")
+    public List<Map<String, Object>> runPreset(@PathVariable long id) {
+        return presets.run(id);
+    }
+
+    @PutMapping("/tasks/{name}/cutoff")
+    public Map<String, Object> scheduleTask(@PathVariable String name, @RequestParam Cutoff cutoff) {
+        return taskService.schedule(name, cutoff.value());
     }
 
     @PostMapping("/tasks/{name}/run")
-    public Map<String, Object> runTask(@PathVariable String name, @RequestParam Cutoff cutoff) {
-        return taskService.run(name, cutoff.value());
+    public Map<String, Object> runTask(@PathVariable String name) {
+        return taskService.run(name);
     }
 
     @GetMapping("/diagnostics/ping")
-    public Map<String, Object> ping(@RequestParam String host) {
-        return diagnostics.ping(host);
+    public Map<String, Object> ping() {
+        return diagnostics.ping();
     }
 
     @PostMapping("/settings/bundles")

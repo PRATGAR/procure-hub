@@ -1,13 +1,10 @@
 package com.tradepost.procure.directory.web;
 
-import com.tradepost.procure.common.Redirector;
 import com.tradepost.procure.directory.service.DirectoryService;
+import com.tradepost.procure.directory.web.DirectoryDtos.MetadataFetched;
 import com.tradepost.procure.directory.web.DirectoryDtos.ResolveRequest;
 import com.tradepost.procure.directory.web.DirectoryDtos.SsoLinkRequest;
-import com.tradepost.procure.directory.web.DirectoryDtos.UserQuery;
-import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
-import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 import javax.naming.NamingException;
@@ -18,7 +15,6 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
@@ -26,31 +22,19 @@ import org.springframework.web.bind.annotation.RestController;
 public class DirectoryController {
 
     private final DirectoryService service;
-    private final Redirector redirector;
 
-    public DirectoryController(DirectoryService service, Redirector redirector) {
+    public DirectoryController(DirectoryService service) {
         this.service = service;
-        this.redirector = redirector;
     }
 
-    @GetMapping("/users")
-    public List<Map<String, String>> find(@Valid UserQuery query) throws NamingException {
-        return service.findUser(query.uid());
+    @GetMapping("/contacts/{contactId}/entry")
+    public List<Map<String, String>> contactEntry(@PathVariable long contactId) throws NamingException {
+        return service.contactEntry(contactId);
     }
 
-    @GetMapping("/users/search")
-    public List<Map<String, String>> search(@RequestParam String name) throws NamingException {
-        return service.searchUsers(name);
-    }
-
-    @GetMapping("/users/{uid}/groups")
-    public List<Map<String, String>> groups(@PathVariable Uid uid) throws NamingException {
-        return service.groupsOf(uid.value());
-    }
-
-    @GetMapping("/units/members")
-    public List<Map<String, String>> members() throws NamingException {
-        return service.unitMembers();
+    @GetMapping("/suppliers/{supplierId}/accounts")
+    public List<Map<String, String>> supplierAccounts(@PathVariable long supplierId) throws NamingException {
+        return service.supplierAccounts(supplierId);
     }
 
     @PostMapping("/sso/links")
@@ -64,13 +48,18 @@ public class DirectoryController {
         return service.verify(id);
     }
 
+    @GetMapping("/sso/links/{id}/team-members")
+    public List<Map<String, String>> teamMembers(@PathVariable long id) throws NamingException {
+        return service.teamMembers(id);
+    }
+
+    @GetMapping("/sso/links/{id}/metadata")
+    public MetadataFetched metadata(@PathVariable long id) {
+        return service.fetchMetadata(id);
+    }
+
     @PostMapping("/sso/providers/resolve")
     public Map<String, Object> resolve(@Valid @RequestBody ResolveRequest request) throws NamingException {
         return service.resolveProvider(request.linkId());
-    }
-
-    @GetMapping("/sso/callback")
-    public void callback(@RequestParam String returnTo, HttpServletResponse response) throws IOException {
-        redirector.to(response, service.callbackTarget(returnTo));
     }
 }

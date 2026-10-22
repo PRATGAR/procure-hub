@@ -1,5 +1,6 @@
 package com.tradepost.procure.admin.repo;
 
+import com.tradepost.procure.admin.StatPreset;
 import com.tradepost.procure.common.Inserts;
 import java.util.HashMap;
 import java.util.List;
@@ -42,6 +43,32 @@ public class SettingsRepository {
 
     public String bundleHex(long id) {
         return jdbc.queryForObject("SELECT blob_hex FROM settings_bundles WHERE id = ?", String.class, id);
+    }
+
+    public long insertPreset(String name, String entity, String columnExpr) {
+        Map<String, Object> row = new HashMap<>();
+        row.put("name", name);
+        row.put("entity", entity);
+        row.put("column_expr", columnExpr);
+        return inserts.into("stat_presets", row);
+    }
+
+    public StatPreset findPreset(long id) {
+        return jdbc.queryForObject("SELECT id, name, entity, column_expr FROM stat_presets WHERE id = ?",
+                (rs, n) -> new StatPreset(rs.getLong("id"), rs.getString("name"), rs.getString("entity"),
+                        rs.getString("column_expr")), id);
+    }
+
+    public void saveCutoff(String task, String cutoff) {
+        int touched = jdbc.update("UPDATE maintenance_cutoffs SET cutoff = ? WHERE task = ?", cutoff, task);
+        if (touched == 0) {
+            jdbc.update("INSERT INTO maintenance_cutoffs (task, cutoff) VALUES (?, ?)", task, cutoff);
+        }
+    }
+
+    public Optional<String> cutoff(String task) {
+        List<String> found = jdbc.queryForList("SELECT cutoff FROM maintenance_cutoffs WHERE task = ?", String.class, task);
+        return found.stream().findFirst();
     }
 
     public void recordRun(String task, String cutoff, int deleted) {

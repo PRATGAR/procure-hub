@@ -21,10 +21,4 @@ public class ReportPages {
         return writer.page("Report preview", body);
     }
 
-    public String print(SavedReport report) {
-        String body = "<h1>" + Html.escape(report.name()) + "</h1>"
-                + "<p class=\"entity\">" + report.entity() + "</p>"
-                + "<div class=\"description\">" + Html.escape(report.description()) + "</div>";
-        return writer.page("Report", body);
-    }
 }

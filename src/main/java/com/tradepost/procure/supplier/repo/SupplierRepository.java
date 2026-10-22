@@ -1,6 +1,7 @@
 package com.tradepost.procure.supplier.repo;
 
 import com.tradepost.procure.common.Inserts;
+import com.tradepost.procure.common.SqlParts;
 import com.tradepost.procure.supplier.Supplier;
 import java.util.HashMap;
 import java.util.List;
@@ -34,19 +35,25 @@ public class SupplierRepository {
     }
 
     public List<Supplier> search(String q) {
-        String sql = "SELECT " + COLUMNS + " FROM suppliers WHERE legal_name LIKE '%" + q + "%' ORDER BY legal_name";
+        return jdbc.query("SELECT " + COLUMNS + " FROM suppliers WHERE legal_name LIKE ? ORDER BY legal_name",
+                MAPPER, "%" + q + "%");
+    }
+
+    public List<Supplier> byNameLike(String stem) {
+        String condition = SqlParts.contains("legal_name", stem);
+        String sql = "SELECT " + COLUMNS + " FROM suppliers WHERE " + condition + " ORDER BY legal_name";
         return jdbc.query(sql, MAPPER);
     }
 
-    public Supplier findById(long id) {
+    public Supplier findById(String id) {
         String sql = "SELECT " + COLUMNS + " FROM suppliers WHERE id = " + id;
         return jdbc.queryForObject(sql, MAPPER);
     }
 
-    public boolean existsByTaxId(String taxId) {
+    public int countByTaxId(String taxId) {
         String sql = "SELECT COUNT(*) FROM suppliers WHERE tax_id = '" + taxId + "'";
         Integer count = jdbc.queryForObject(sql, Integer.class);
-        return count != null && count > 0;
+        return count == null ? 0 : count;
     }
 
     public long insert(String legalName, String country, String taxId, String website, String description) {
@@ -61,9 +68,9 @@ public class SupplierRepository {
         return inserts.into("suppliers", row);
     }
 
-    public void updateProfile(long id, String displayName, String description, String website) {
-        jdbc.update("UPDATE suppliers SET display_name = ?, description = ?, website = ? WHERE id = ?",
-                displayName, description, website, id);
+    public void updateProfile(long id, String displayName, String description, String website, String taxId) {
+        jdbc.update("UPDATE suppliers SET display_name = ?, description = ?, website = ?, tax_id = COALESCE(?, tax_id) WHERE id = ?",
+                displayName, description, website, taxId, id);
     }
 
     public void saveBankAccount(long supplierId, String holder, String bic, String ibanTail) {

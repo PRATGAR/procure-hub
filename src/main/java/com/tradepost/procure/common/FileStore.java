@@ -20,9 +20,10 @@ public class FileStore {
     public static final String ATTACHMENTS = "attachments";
     public static final String PDF = "pdf";
     public static final String PDF_ARCHIVE = "pdf-archive";
+    public static final String CERTIFICATES = "certificates";
 
     private static final List<String> AREAS =
-            List.of(MEDIA, THUMBS, DROP, ARCHIVES, EXPORTS, LABELS, ATTACHMENTS, PDF, PDF_ARCHIVE);
+            List.of(MEDIA, THUMBS, DROP, ARCHIVES, EXPORTS, LABELS, ATTACHMENTS, PDF, PDF_ARCHIVE, CERTIFICATES);
 
     private final Path root;
 
@@ -50,6 +51,10 @@ public class FileStore {
         Path sampleExport = root.resolve(EXPORTS).resolve("report-1-1.csv");
         if (Files.notExists(sampleExport)) {
             Files.writeString(sampleExport, "id,number,status");
+        }
+        Path sampleCertificate = root.resolve(CERTIFICATES).resolve("iso-9001.txt");
+        if (Files.notExists(sampleCertificate)) {
+            Files.writeString(sampleCertificate, "ISO 9001 certificate\nIssued to Nordparts GmbH\n");
         }
         Path sampleLabel = root.resolve(LABELS).resolve("LBL-1.txt");
         if (Files.notExists(sampleLabel)) {

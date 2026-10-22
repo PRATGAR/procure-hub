@@ -26,6 +26,16 @@ public class InboundRepository {
         return inserts.into("inbound_events", row);
     }
 
+    public long insertBatch(String payloadHex) {
+        Map<String, Object> row = new HashMap<>();
+        row.put("payload_hex", payloadHex);
+        return inserts.into("import_batches", row);
+    }
+
+    public String batchHex(long id) {
+        return jdbc.queryForObject("SELECT payload_hex FROM import_batches WHERE id = ?", String.class, id);
+    }
+
     public String payloadHex(long id) {
         return jdbc.queryForObject("SELECT payload_hex FROM inbound_events WHERE id = ?", String.class, id);
     }

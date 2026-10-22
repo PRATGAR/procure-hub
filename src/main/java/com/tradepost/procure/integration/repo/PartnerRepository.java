@@ -60,6 +60,14 @@ public class PartnerRepository {
         return jdbc.queryForObject("SELECT " + COLUMNS + " FROM partners WHERE code = ?", MAPPER, code);
     }
 
+    public void updateContractFile(long id, String fileName) {
+        jdbc.update("UPDATE partners SET contract_file = ? WHERE id = ?", fileName, id);
+    }
+
+    public String contractFile(long id) {
+        return jdbc.queryForObject("SELECT contract_file FROM partners WHERE id = ?", String.class, id);
+    }
+
     public boolean codeTaken(String code) {
         Integer taken = jdbc.queryForObject("SELECT COUNT(*) FROM partners WHERE code = ?", Integer.class, code);
         return taken != null && taken > 0;

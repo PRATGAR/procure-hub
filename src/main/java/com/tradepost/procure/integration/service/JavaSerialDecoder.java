@@ -5,7 +5,7 @@ import java.io.ObjectInputFilter;
 import java.io.ObjectInputStream;
 import java.util.Map;
 
-public class JavaSerialDecoder implements PayloadDecoder {
+public class JavaSerialDecoder {
 
     private final ObjectInputFilter filter;
 
@@ -13,7 +13,6 @@ public class JavaSerialDecoder implements PayloadDecoder {
         this.filter = filter;
     }
 
-    @Override
     public Map<String, Object> decode(byte[] payload) throws Exception {
         try (ObjectInputStream in = new ObjectInputStream(new ByteArrayInputStream(payload))) {
             in.setObjectInputFilter(filter);

@@ -1,41 +1,45 @@
 package com.tradepost.procure.catalog.service;
 
 import com.tradepost.procure.catalog.Item;
+import com.tradepost.procure.catalog.ItemFacts;
 import com.tradepost.procure.catalog.ItemRef;
 import com.tradepost.procure.catalog.Media;
+import com.tradepost.procure.catalog.SavedSearch;
 import com.tradepost.procure.catalog.Thumbnail;
 import com.tradepost.procure.catalog.repo.CatalogRepository;
 import com.tradepost.procure.catalog.web.CatalogDtos.CreateItemRequest;
+import com.tradepost.procure.catalog.web.CatalogDtos.FetchResult;
 import com.tradepost.procure.catalog.web.CatalogDtos.ItemDetail;
+import com.tradepost.procure.catalog.web.CatalogDtos.LabelText;
 import com.tradepost.procure.catalog.web.CatalogDtos.MediaRequest;
+import com.tradepost.procure.catalog.web.CatalogDtos.PrefsRequest;
+import com.tradepost.procure.catalog.web.CatalogDtos.PrefsSaved;
+import com.tradepost.procure.catalog.web.CatalogDtos.SearchRequest;
+import com.tradepost.procure.catalog.web.CatalogDtos.SpecValue;
 import com.tradepost.procure.catalog.web.CatalogDtos.ThumbnailRequest;
 import com.tradepost.procure.common.Actors;
 import com.tradepost.procure.common.AuditWriter;
 import com.tradepost.procure.common.ConflictException;
+import com.tradepost.procure.common.EvalContexts;
+import com.tradepost.procure.common.ExpressionService;
 import com.tradepost.procure.common.FileNames;
 import com.tradepost.procure.common.FileStore;
-import com.tradepost.procure.common.Html;
 import com.tradepost.procure.common.InvalidRequestException;
 import com.tradepost.procure.common.OutboundHttp;
 import com.tradepost.procure.common.QueryFragments;
 import com.tradepost.procure.common.SearchSupport;
+import com.tradepost.procure.common.SqlParts;
 import com.tradepost.procure.common.Terms;
 import java.io.IOException;
-import java.io.StringReader;
 import java.util.List;
 import java.util.Map;
-import javax.xml.xpath.XPath;
-import javax.xml.xpath.XPathExpressionException;
-import javax.xml.xpath.XPathFactory;
 import org.springframework.stereotype.Service;
-import org.xml.sax.InputSource;
 
 @Service
 public class CatalogService {
 
     private static final String SEARCH_SELECT =
             "SELECT id, sku, name, category_code, unit_price_cents, currency FROM catalog_items";
-
     private static final Map<String, String> SORT_COLUMNS = Map.of(
             "name", "name",
             "sku", "sku",
@@ -45,14 +49,16 @@ public class CatalogService {
     private final SearchSupport search;
     private final FileStore store;
     private final OutboundHttp outbound;
+    private final ExpressionService expressions;
     private final AuditWriter audit;
 
     public CatalogService(CatalogRepository repo, SearchSupport search, FileStore store,
-                          OutboundHttp outbound, AuditWriter audit) {
+                          OutboundHttp outbound, ExpressionService expressions, AuditWriter audit) {
         this.repo = repo;
         this.search = search;
         this.store = store;
         this.outbound = outbound;
+        this.expressions = expressions;
         this.audit = audit;
     }
 
@@ -70,10 +76,19 @@ public class CatalogService {
     }
 
     public List<Map<String, Object>> search(String q, String sort, String dir, int limit) {
-        String where = " WHERE status = 'ACTIVE' AND name LIKE '%" + Terms.escapeLike(q) + "%'";
-        String column = SORT_COLUMNS.getOrDefault(sort == null ? "name" : sort, "name");
-        String order = QueryFragments.orderBy(column, dir);
-        return search.page(SEARCH_SELECT, where, order, limit);
+        String where = " WHERE status = 'ACTIVE' AND name LIKE ?";
+        String order = orderFor(sort, dir);
+        return search.page(SEARCH_SELECT, where, order, limit, "%" + q + "%");
+    }
+
+    public long saveSearch(SearchRequest request) {
+        return repo.insertSearch(request.name().trim(), request.term());
+    }
+
+    public List<Map<String, Object>> savedResults(long searchId) {
+        SavedSearch saved = repo.findSearch(searchId);
+        String where = " WHERE status = 'ACTIVE' AND " + SqlParts.contains("name", Terms.escapeLike(saved.term()));
+        return search.page(SEARCH_SELECT, where, orderFor(null, null), 25);
     }
 
     public ItemDetail detail(long id) {
@@ -115,30 +130,37 @@ public class CatalogService {
         return store.read(FileStore.THUMBS, thumbnail.fileName());
     }
 
-    public Map<String, Object> fetchRemoteMedia(long itemId, String sourceUrl) {
+    public FetchResult fetchRemoteMedia(long itemId, String sourceUrl) {
         repo.findItem(itemId);
         String body = outbound.fetchText(sourceUrl);
-        return Map.of("itemId", itemId, "bytes", body == null ? 0 : body.length());
+        return new FetchResult(itemId, body == null ? 0 : body.length());
     }
 
-    public String card(long id) {
-        Item item = repo.findItem(id);
-        return "<article class=\"item-card\"><h2>" + Html.escape(item.name()) + "</h2>"
-                + "<p>" + Html.escape(item.description()) + "</p>"
-                + "<footer>" + Html.escape(item.sku()) + " &middot; "
-                + item.unitPriceCents() / 100 + " " + Html.escape(item.currency()) + "</footer></article>";
+    public PrefsSaved savePrefs(long itemId, PrefsRequest request) {
+        repo.findItem(itemId);
+        repo.savePrefs(itemId, request.specField(), request.labelFormat());
+        return new PrefsSaved(itemId, true);
     }
 
-    public String specSummary(long id, String field) {
+    public LabelText label(long itemId) {
+        Item item = repo.findItem(itemId);
+        String format = repo.labelFormat(itemId).orElse("#{sku} - #{name}");
+        ItemFacts facts = new ItemFacts(item.sku(), item.name(), item.categoryCode(), item.unitPriceCents(),
+                item.currency());
+        String text = expressions.render(format, EvalContexts.standard(Map.of("item", facts)), facts);
+        return new LabelText(itemId, text);
+    }
+
+    public SpecValue specSummary(long id) {
         Item item = repo.findItem(id);
+        String field = repo.specField(id).orElse("sku");
         String xml = SpecDocuments.build(item);
-        XPath xpath = XPathFactory.newInstance().newXPath();
-        String expression = "/spec/attributes/attribute[@name='" + field + "']/@value";
-        try {
-            return xpath.evaluateExpression(expression, new InputSource(new StringReader(xml)), String.class);
-        } catch (XPathExpressionException e) {
-            throw new InvalidRequestException("unknown specification field");
-        }
+        return new SpecValue(field, SpecQueries.lookup(xml, field));
+    }
+
+    private String orderFor(String sort, String dir) {
+        String column = SORT_COLUMNS.getOrDefault(sort == null ? "name" : sort, "name");
+        return QueryFragments.orderBy(column, dir);
     }
 
     private String firstTag(String tags) {

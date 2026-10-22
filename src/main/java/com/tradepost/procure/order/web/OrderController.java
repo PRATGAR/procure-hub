@@ -69,10 +69,15 @@ public class OrderController {
         return Map.of("orderId", id, "status", "APPROVED");
     }
 
+    @PutMapping("/{id}/return-url")
+    public Map<String, Object> updateReturnUrl(@PathVariable long id, @RequestParam ReturnTarget returnTo) {
+        service.updateReturnUrl(id, returnTo.value());
+        return Map.of("orderId", id, "updated", true);
+    }
+
     @GetMapping("/{id}/approve-link")
-    public void approveLink(@PathVariable long id, @RequestParam(required = false) ReturnTarget returnTo,
-                            HttpServletResponse response) throws IOException {
-        String target = service.approvalLandingTarget(id, returnTo == null ? null : returnTo.value());
+    public void approveLink(@PathVariable long id, HttpServletResponse response) throws IOException {
+        String target = service.approvalLandingTarget(id);
         redirector.to(response, target);
     }
 

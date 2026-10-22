@@ -1,6 +1,7 @@
 package com.tradepost.procure.admin.web;
 
 import com.tradepost.procure.admin.AuditAction;
+import com.tradepost.procure.report.ReportEntity;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
@@ -11,9 +12,13 @@ public final class AdminDtos {
     private AdminDtos() {
     }
 
-    public record AuditFilter(
-            @Size(max = 32) @Pattern(regexp = "^[^;]*$") String actor,
-            AuditAction action) {
+    public record AuditFilter(AuditAction action) {
+    }
+
+    public record StatPresetRequest(
+            @NotBlank @Size(max = 80) String name,
+            @NotNull ReportEntity entity,
+            @NotBlank @Pattern(regexp = "^[A-Za-z_][A-Za-z0-9_(),. ]{0,119}$") String column) {
     }
 
     public record BundleRequest(

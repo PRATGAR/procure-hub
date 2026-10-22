@@ -32,7 +32,41 @@ public final class CatalogDtos {
     }
 
     public record ThumbnailRequest(
-            @NotBlank @Pattern(regexp = "^[A-Za-z0-9_-]{1,60}\\.(png|jpg)$") String fileName) {
+            @NotBlank @Pattern(regexp = "^[A-Za-z0-9_./-]{1,60}\\.(png|jpg)$") String fileName) {
+    }
+
+    public record PrefsRequest(
+            @Size(max = 120) String specField,
+            @Size(max = 300) String labelFormat) {
+    }
+
+    public record SearchRequest(
+            @NotBlank @Size(max = 80) String name,
+            @NotBlank @Size(max = 120) String term) {
+    }
+
+    public record Created(long id, String status) {
+    }
+
+    public record EntityId(long id) {
+    }
+
+    public record FetchResult(long itemId, int bytes) {
+    }
+
+    public record FeedStaged(long id, String format) {
+    }
+
+    public record FeedProcessed(long feedId, int imported) {
+    }
+
+    public record SpecValue(String field, String value) {
+    }
+
+    public record PrefsSaved(long itemId, boolean saved) {
+    }
+
+    public record LabelText(long itemId, String label) {
     }
 
     public record FetchRequest(@NotBlank @Size(max = 400) String sourceUrl) {

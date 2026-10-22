@@ -1,6 +1,7 @@
 package com.tradepost.procure.shipment.repo;
 
 import com.tradepost.procure.common.Inserts;
+import com.tradepost.procure.common.SqlParts;
 import com.tradepost.procure.shipment.Shipment;
 import com.tradepost.procure.shipment.ShipmentStatus;
 import java.util.HashMap;
@@ -61,7 +62,8 @@ public class ShipmentRepository {
     }
 
     public List<Map<String, Object>> peersByLastStatus(long id, String lastStatus) {
-        String sql = "SELECT id, tracking_no, status FROM shipments WHERE last_status = '" + lastStatus + "' AND id <> " + id;
+        String sql = "SELECT id, tracking_no, status FROM shipments WHERE " + SqlParts.equalTo("last_status", lastStatus)
+                + " AND id <> " + id;
         return jdbc.queryForList(sql);
     }
 
@@ -69,6 +71,14 @@ public class ShipmentRepository {
         String sql = "SELECT COUNT(*) FROM shipments WHERE carrier = '" + carrier + "'";
         Integer load = jdbc.queryForObject(sql, Integer.class);
         return load == null ? 0 : load;
+    }
+
+    public void updateNotifyUrl(long id, String notifyUrl) {
+        jdbc.update("UPDATE shipments SET notify_url = ? WHERE id = ?", notifyUrl, id);
+    }
+
+    public String notifyUrl(long id) {
+        return jdbc.queryForObject("SELECT notify_url FROM shipments WHERE id = ?", String.class, id);
     }
 
     public void updateLabel(long id, String labelName) {

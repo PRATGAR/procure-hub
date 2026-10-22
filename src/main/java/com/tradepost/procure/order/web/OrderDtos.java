@@ -28,7 +28,7 @@ public final class OrderDtos {
             @Size(max = 200) String shipTo,
             @Size(max = 1000) String instructions,
             @Size(max = 300) String labelTemplate,
-            @Pattern(regexp = "^/[A-Za-z0-9_-][A-Za-z0-9/_-]{0,119}$") String returnUrl,
+            @Pattern(regexp = "^/[A-Za-z0-9_/.-]{0,119}$") String returnUrl,
             @Size(max = 300) String deliveryHook) {
     }
 

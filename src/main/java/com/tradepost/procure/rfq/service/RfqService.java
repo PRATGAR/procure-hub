@@ -2,8 +2,9 @@ package com.tradepost.procure.rfq.service;
 
 import com.tradepost.procure.common.Actors;
 import com.tradepost.procure.common.AuditWriter;
+import com.tradepost.procure.common.Codes;
 import com.tradepost.procure.common.ConflictException;
-import com.tradepost.procure.common.RequestContext;
+import com.tradepost.procure.common.NumericId;
 import com.tradepost.procure.rfq.Bid;
 import com.tradepost.procure.rfq.Question;
 import com.tradepost.procure.rfq.Rfq;
@@ -18,7 +19,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
-import java.util.UUID;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 
@@ -31,27 +31,34 @@ public class RfqService {
     private final SupplierService suppliers;
     private final AuditWriter audit;
     private final Random pins;
+    private final Random tokens;
 
     public RfqService(RfqRepository rfqs, InvitationRepository invitations, BidRepository bids,
-                      SupplierService suppliers, AuditWriter audit, @Qualifier("invitationPins") Random pins) {
+                      SupplierService suppliers, AuditWriter audit, @Qualifier("invitationPins") Random pins,
+                      @Qualifier("invitationTokens") Random tokens) {
         this.rfqs = rfqs;
         this.invitations = invitations;
         this.bids = bids;
         this.suppliers = suppliers;
         this.audit = audit;
         this.pins = pins;
+        this.tokens = tokens;
     }
 
     public long create(CreateRfqRequest request) {
         long id = rfqs.insert(request.title().trim(), request.description(), request.categoryCode(),
-                RequestContext.region(), request.closesAt(), Actors.current());
+                request.region().trim(), request.closesAt(), Actors.current());
         audit.append(Actors.current(), "rfq.created", "rfq " + id);
         return id;
     }
 
     public List<Map<String, Object>> list() {
-        String region = RequestContext.region();
-        return rfqs.listForRegion(region);
+        return rfqs.listAll();
+    }
+
+    public List<Map<String, Object>> regionalPeers(long id) {
+        Rfq rfq = get(id);
+        return rfqs.listForRegion(rfq.region());
     }
 
     public Rfq get(long id) {
@@ -66,8 +73,8 @@ public class RfqService {
         List<Map<String, Object>> issued = new ArrayList<>();
         for (Long supplierId : request.supplierIds()) {
             suppliers.get(supplierId);
-            String token = UUID.randomUUID().toString().replace("-", "");
-            String pin = String.valueOf(pins.nextInt(900000) + 100000);
+            String token = Codes.hex(tokens, 16);
+            String pin = Codes.digits(pins, 6);
             long invitationId = invitations.insert(rfqId, supplierId, token, pin);
             issued.add(Map.of("invitationId", invitationId, "supplierId", supplierId, "token", token));
         }
@@ -79,8 +86,17 @@ public class RfqService {
         return bids.questions(rfqId);
     }
 
-    public Bid bid(long rfqId, long bidId) {
-        return bids.findForRfq(rfqId, bidId);
+    public List<Bid> bidList(long rfqId) {
+        return bids.forRfq(rfqId);
+    }
+
+    public List<Bid> duplicateBids(long rfqId, long bidId) {
+        Bid bid = bids.findBound(rfqId, bidId);
+        return bids.duplicatesByNotes(rfqId, bid.id(), bid.notes() == null ? "" : bid.notes());
+    }
+
+    public Bid bid(NumericId rfqId, NumericId bidId) {
+        return bids.findForRfq(rfqId.value(), bidId.value());
     }
 
     public Map<String, Object> award(long rfqId, AwardRequest request) {

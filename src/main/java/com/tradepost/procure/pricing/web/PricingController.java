@@ -5,9 +5,17 @@ import com.tradepost.procure.pricing.RuleScope;
 import com.tradepost.procure.pricing.service.PricingService;
 import com.tradepost.procure.pricing.service.RuleImportService;
 import com.tradepost.procure.pricing.web.PricingDtos.CreateRuleRequest;
+import com.tradepost.procure.pricing.web.PricingDtos.Created;
+import com.tradepost.procure.pricing.web.PricingDtos.Explanation;
+import com.tradepost.procure.pricing.web.PricingDtos.FxRate;
+import com.tradepost.procure.pricing.web.PricingDtos.ImportResult;
 import com.tradepost.procure.pricing.web.PricingDtos.PreviewRequest;
+import com.tradepost.procure.pricing.web.PricingDtos.PreviewResult;
 import com.tradepost.procure.pricing.web.PricingDtos.QuoteRequest;
+import com.tradepost.procure.pricing.web.PricingDtos.QuoteResult;
+import com.tradepost.procure.pricing.web.PricingDtos.RuleRate;
 import com.tradepost.procure.pricing.web.PricingDtos.SimulateRequest;
+import com.tradepost.procure.pricing.web.PricingDtos.SimulationResult;
 import jakarta.validation.Valid;
 import java.util.List;
 import java.util.Map;
@@ -34,9 +42,9 @@ public class PricingController {
     }
 
     @PostMapping("/rules")
-    public ResponseEntity<Map<String, Object>> createRule(@Valid @RequestBody CreateRuleRequest request) {
+    public ResponseEntity<Created> createRule(@Valid @RequestBody CreateRuleRequest request) {
         long id = service.createRule(request);
-        return ResponseEntity.status(HttpStatus.CREATED).body(Map.of("id", id));
+        return ResponseEntity.status(HttpStatus.CREATED).body(new Created(id));
     }
 
     @GetMapping("/rules")
@@ -44,33 +52,38 @@ public class PricingController {
         return service.rules(scope);
     }
 
+    @GetMapping("/rules/{id}/rate")
+    public RuleRate ruleRate(@PathVariable long id) {
+        return service.ruleRate(id);
+    }
+
     @PostMapping("/quotes")
-    public ResponseEntity<Map<String, Object>> quote(@Valid @RequestBody QuoteRequest request) {
+    public ResponseEntity<QuoteResult> quote(@Valid @RequestBody QuoteRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED).body(service.quote(request));
     }
 
     @GetMapping("/quotes/{id}/explain")
-    public Map<String, Object> explain(@PathVariable long id) {
-        return Map.of("quoteId", id, "explanation", service.explain(id));
+    public Explanation explain(@PathVariable long id) {
+        return new Explanation(id, service.explain(id));
     }
 
     @PostMapping("/rules/preview")
-    public Map<String, Object> preview(@Valid @RequestBody PreviewRequest request) {
-        return Map.of("result", String.valueOf(service.preview(request)));
+    public PreviewResult preview(@Valid @RequestBody PreviewRequest request) {
+        return new PreviewResult(String.valueOf(service.preview(request)));
     }
 
     @GetMapping("/fx/{currency}")
-    public Map<String, Object> fx(@PathVariable CurrencyCode currency) {
-        return Map.of("currency", currency.name(), "rateMicro", service.fxRate(currency.name()));
+    public FxRate fx(@PathVariable CurrencyCode currency) {
+        return new FxRate(currency.name(), service.fxRate(currency.name()));
     }
 
     @PostMapping("/simulate")
-    public Map<String, Object> simulate(@Valid @RequestBody SimulateRequest request) {
-        return Map.of("strategy", request.strategy(), "result", String.valueOf(service.simulate(request)));
+    public SimulationResult simulate(@Valid @RequestBody SimulateRequest request) {
+        return new SimulationResult(request.strategy(), String.valueOf(service.simulate(request)));
     }
 
     @PostMapping(value = "/rules/import", consumes = {"application/x-yaml", "text/yaml", "text/plain"})
-    public Map<String, Object> importRules(@RequestBody String body) {
-        return Map.of("imported", importer.importRules(body));
+    public ImportResult importRules(@RequestBody String body) {
+        return new ImportResult(importer.importRules(body));
     }
 }

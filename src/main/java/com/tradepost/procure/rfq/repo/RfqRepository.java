@@ -1,6 +1,7 @@
 package com.tradepost.procure.rfq.repo;
 
 import com.tradepost.procure.common.Inserts;
+import com.tradepost.procure.common.SqlParts;
 import com.tradepost.procure.rfq.Rfq;
 import java.sql.Date;
 import java.time.LocalDate;
@@ -56,8 +57,13 @@ public class RfqRepository {
         return jdbc.queryForObject("SELECT " + COLUMNS + " FROM rfqs WHERE id = ?", MAPPER, id);
     }
 
+    public List<Map<String, Object>> listAll() {
+        return jdbc.queryForList("SELECT id, title, status, region, closes_at FROM rfqs ORDER BY id");
+    }
+
     public List<Map<String, Object>> listForRegion(String region) {
-        String sql = "SELECT id, title, status, region, closes_at FROM rfqs WHERE region = '" + region + "' ORDER BY id";
+        String condition = SqlParts.equalTo("region", region);
+        String sql = "SELECT id, title, status, region, closes_at FROM rfqs WHERE " + condition + " ORDER BY id";
         return jdbc.queryForList(sql);
     }
 

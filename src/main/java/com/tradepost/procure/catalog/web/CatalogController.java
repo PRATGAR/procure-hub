@@ -5,11 +5,21 @@ import com.tradepost.procure.catalog.Media;
 import com.tradepost.procure.catalog.service.CatalogImportService;
 import com.tradepost.procure.catalog.service.CatalogService;
 import com.tradepost.procure.catalog.web.CatalogDtos.CreateItemRequest;
+import com.tradepost.procure.catalog.web.CatalogDtos.Created;
+import com.tradepost.procure.catalog.web.CatalogDtos.EntityId;
+import com.tradepost.procure.catalog.web.CatalogDtos.FeedProcessed;
+import com.tradepost.procure.catalog.web.CatalogDtos.FeedStaged;
 import com.tradepost.procure.catalog.web.CatalogDtos.FetchRequest;
+import com.tradepost.procure.catalog.web.CatalogDtos.FetchResult;
 import com.tradepost.procure.catalog.web.CatalogDtos.ItemDetail;
+import com.tradepost.procure.catalog.web.CatalogDtos.LabelText;
 import com.tradepost.procure.catalog.web.CatalogDtos.MediaRequest;
+import com.tradepost.procure.catalog.web.CatalogDtos.PrefsRequest;
+import com.tradepost.procure.catalog.web.CatalogDtos.PrefsSaved;
+import com.tradepost.procure.catalog.web.CatalogDtos.SearchRequest;
+import com.tradepost.procure.catalog.web.CatalogDtos.SpecValue;
 import com.tradepost.procure.catalog.web.CatalogDtos.ThumbnailRequest;
-import com.tradepost.procure.common.PageWriter;
+import com.tradepost.procure.config.TradepostProperties;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import java.io.IOException;
@@ -20,6 +30,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -31,18 +42,18 @@ public class CatalogController {
 
     private final CatalogService service;
     private final CatalogImportService imports;
-    private final PageWriter writer;
+    private final TradepostProperties properties;
 
-    public CatalogController(CatalogService service, CatalogImportService imports, PageWriter writer) {
+    public CatalogController(CatalogService service, CatalogImportService imports, TradepostProperties properties) {
         this.service = service;
         this.imports = imports;
-        this.writer = writer;
+        this.properties = properties;
     }
 
     @PostMapping("/items")
-    public ResponseEntity<Map<String, Object>> create(@Valid @RequestBody CreateItemRequest request) {
+    public ResponseEntity<Created> create(@Valid @RequestBody CreateItemRequest request) {
         long id = service.create(request);
-        return ResponseEntity.status(HttpStatus.CREATED).body(Map.of("id", id, "status", "DRAFT"));
+        return ResponseEntity.status(HttpStatus.CREATED).body(new Created(id, "DRAFT"));
     }
 
     @GetMapping("/items")
@@ -51,6 +62,17 @@ public class CatalogController {
                                             @RequestParam(required = false) String dir,
                                             @RequestParam(defaultValue = "25") int limit) {
         return service.search(q, sort, dir, limit);
+    }
+
+    @PostMapping("/searches")
+    public ResponseEntity<EntityId> saveSearch(@Valid @RequestBody SearchRequest request) {
+        long id = service.saveSearch(request);
+        return ResponseEntity.status(HttpStatus.CREATED).body(new EntityId(id));
+    }
+
+    @GetMapping("/searches/{searchId}/results")
+    public List<Map<String, Object>> savedResults(@PathVariable long searchId) {
+        return service.savedResults(searchId);
     }
 
     @GetMapping("/items/{id}")
@@ -64,10 +86,10 @@ public class CatalogController {
     }
 
     @PostMapping("/items/{id}/media")
-    public ResponseEntity<Map<String, Object>> registerMedia(@PathVariable long id,
-                                                             @Valid @RequestBody MediaRequest request) {
+    public ResponseEntity<EntityId> registerMedia(@PathVariable long id,
+                                                  @Valid @RequestBody MediaRequest request) {
         long mediaId = service.registerMedia(id, request);
-        return ResponseEntity.status(HttpStatus.CREATED).body(Map.of("id", mediaId));
+        return ResponseEntity.status(HttpStatus.CREATED).body(new EntityId(mediaId));
     }
 
     @GetMapping("/items/{id}/media/{mediaId}")
@@ -76,15 +98,15 @@ public class CatalogController {
         Media media = service.media(id, mediaId);
         byte[] content = service.mediaContent(media);
         response.setContentType(media.contentType());
-        response.setHeader("Content-Disposition", "inline; filename=\"" + media.storedName() + "\"");
+        response.setHeader(properties.downloads().mediaHeader(), "inline; filename=\"" + media.storedName() + "\"");
         return content;
     }
 
     @PostMapping("/items/{id}/thumbnails")
-    public ResponseEntity<Map<String, Object>> registerThumbnail(@PathVariable long id,
-                                                                 @Valid @RequestBody ThumbnailRequest request) {
+    public ResponseEntity<EntityId> registerThumbnail(@PathVariable long id,
+                                                      @Valid @RequestBody ThumbnailRequest request) {
         long thumbId = service.registerThumbnail(id, request);
-        return ResponseEntity.status(HttpStatus.CREATED).body(Map.of("id", thumbId));
+        return ResponseEntity.status(HttpStatus.CREATED).body(new EntityId(thumbId));
     }
 
     @GetMapping("/items/{id}/thumbnails/{thumbId}")
@@ -95,24 +117,33 @@ public class CatalogController {
     }
 
     @PostMapping("/items/{id}/media/fetch")
-    public Map<String, Object> fetchMedia(@PathVariable long id, @Valid @RequestBody FetchRequest request) {
+    public FetchResult fetchMedia(@PathVariable long id, @Valid @RequestBody FetchRequest request) {
         return service.fetchRemoteMedia(id, request.sourceUrl());
     }
 
-    @PostMapping(value = "/import", consumes = {"application/xml", "text/xml", "text/csv", "text/plain"})
-    public Map<String, Object> importFeed(@RequestParam(defaultValue = "xml") String format,
-                                          @RequestBody String payload) {
-        int imported = imports.start(format, payload);
-        return Map.of("format", format, "imported", imported);
+    @PutMapping("/items/{id}/prefs")
+    public PrefsSaved savePrefs(@PathVariable long id, @Valid @RequestBody PrefsRequest request) {
+        return service.savePrefs(id, request);
     }
 
-    @GetMapping("/items/{id}/card")
-    public void card(@PathVariable long id, HttpServletResponse response) throws IOException {
-        writer.html(response, writer.page("Item", service.card(id)));
+    @GetMapping("/items/{id}/label")
+    public LabelText label(@PathVariable long id) {
+        return service.label(id);
+    }
+
+    @PostMapping(value = "/import", consumes = {"application/xml", "text/xml", "text/csv", "text/plain"})
+    public FeedStaged stageFeed(@RequestParam(defaultValue = "xml") String format, @RequestBody String payload) {
+        long id = imports.stage(format, payload);
+        return new FeedStaged(id, format);
+    }
+
+    @PostMapping("/feeds/{feedId}/process")
+    public FeedProcessed processFeed(@PathVariable long feedId) {
+        return new FeedProcessed(feedId, imports.process(feedId));
     }
 
     @GetMapping("/items/{id}/spec/summary")
-    public Map<String, Object> specSummary(@PathVariable long id, @RequestParam SpecField field) {
-        return Map.of("field", field.value(), "value", service.specSummary(id, field.value()));
+    public SpecValue specSummary(@PathVariable long id) {
+        return service.specSummary(id);
     }
 }

@@ -33,6 +33,10 @@ public class AuditRepository {
         return actionQuery.getResultList();
     }
 
+    public String actorOf(long id) {
+        return jdbc.queryForObject("SELECT actor FROM audit_log WHERE id = ?", String.class, id);
+    }
+
     public List<Map<String, Object>> recent(int limit) {
         return jdbc.queryForList("SELECT id, actor, action, detail FROM audit_log ORDER BY id DESC LIMIT ?", limit);
     }

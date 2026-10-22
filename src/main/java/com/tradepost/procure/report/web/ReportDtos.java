@@ -43,6 +43,24 @@ public final class ReportDtos {
             @Size(max = 300) String callbackUrl) {
     }
 
+    public record Created(long id) {
+    }
+
+    public record RunQueued(long runId, int rows, String status, String file) {
+    }
+
+    public record FilterRun(long filterId, int rows) {
+    }
+
+    public record ScheduleCreated(long scheduleId, String status) {
+    }
+
+    public record Dispatched(long scheduleId, boolean delivered) {
+    }
+
+    public record PdfExported(long reportId, int exitCode) {
+    }
+
     public record ExportPdfRequest(@Size(max = 120) String title) {
     }
 }

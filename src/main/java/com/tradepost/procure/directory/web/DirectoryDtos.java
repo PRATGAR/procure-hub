@@ -5,7 +5,6 @@ import com.tradepost.procure.directory.SsoProvider;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 
 public final class DirectoryDtos {
@@ -17,12 +16,14 @@ public final class DirectoryDtos {
             @Min(1) long userRef,
             @NotNull SsoProvider provider,
             @NotBlank @Size(max = 80) String externalId,
-            @NotNull OrgUnit unit) {
+            @NotNull OrgUnit unit,
+            @Size(max = 60) String team,
+            @Size(max = 300) String metadataUrl) {
+    }
+
+    public record MetadataFetched(long linkId, int bytes) {
     }
 
     public record ResolveRequest(@Min(1) long linkId) {
-    }
-
-    public record UserQuery(@NotBlank @Pattern(regexp = "^[A-Za-z0-9._*@-]{1,64}$") String uid) {
     }
 }

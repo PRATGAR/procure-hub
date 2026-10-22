@@ -10,7 +10,7 @@ import org.w3c.dom.Element;
 import org.w3c.dom.NodeList;
 import org.xml.sax.InputSource;
 
-@Component("xml")
+@Component
 public class XmlFeedParser implements FeedParser {
 
     private final FeedItems items;

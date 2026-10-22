@@ -63,3 +63,5 @@ tradepost:
   psp-base-url: https://psp.example.com/v1
   security:
     pin-seed: 4711
+  downloads:
+    media-header: Content-Disposition

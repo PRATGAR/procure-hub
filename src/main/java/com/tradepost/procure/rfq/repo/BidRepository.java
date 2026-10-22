@@ -1,6 +1,7 @@
 package com.tradepost.procure.rfq.repo;
 
 import com.tradepost.procure.common.Inserts;
+import com.tradepost.procure.common.SqlParts;
 import com.tradepost.procure.rfq.Bid;
 import com.tradepost.procure.rfq.Question;
 import java.util.HashMap;
@@ -52,7 +53,7 @@ public class BidRepository {
         return inserts.into("rfq_bids", row);
     }
 
-    public Bid findForRfq(long rfqId, long bidId) {
+    public Bid findForRfq(String rfqId, String bidId) {
         String sql = "SELECT " + COLUMNS + " FROM rfq_bids WHERE id = " + bidId + " AND rfq_id = " + rfqId;
         return jdbc.queryForObject(sql, BID_MAPPER);
     }
@@ -62,7 +63,7 @@ public class BidRepository {
     }
 
     public long rateMicro(String currency) {
-        String sql = "SELECT rate_micro FROM fx_rates WHERE currency = '" + currency + "'";
+        String sql = "SELECT rate_micro FROM fx_rates WHERE " + SqlParts.equalTo("currency", currency);
         Long rate = jdbc.queryForObject(sql, Long.class);
         return rate == null ? 1_000_000L : rate;
     }
@@ -71,6 +72,16 @@ public class BidRepository {
         String sql = "SELECT surcharge_bp FROM freight_rules WHERE incoterm = '" + incoterm + "'";
         Integer surcharge = jdbc.queryForObject(sql, Integer.class);
         return surcharge == null ? 0 : surcharge;
+    }
+
+    public List<Bid> forRfq(long rfqId) {
+        return jdbc.query("SELECT " + COLUMNS + " FROM rfq_bids WHERE rfq_id = ? ORDER BY id", BID_MAPPER, rfqId);
+    }
+
+    public List<Bid> duplicatesByNotes(long rfqId, long bidId, String notes) {
+        String sql = "SELECT " + COLUMNS + " FROM rfq_bids WHERE rfq_id = ? AND id <> ? AND "
+                + SqlParts.equalTo("notes", notes);
+        return jdbc.query(sql, BID_MAPPER, rfqId, bidId);
     }
 
     public long insertQuestion(long rfqId, long invitationId, String question) {

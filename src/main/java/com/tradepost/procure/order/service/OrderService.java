@@ -2,6 +2,7 @@ package com.tradepost.procure.order.service;
 
 import com.tradepost.procure.common.Actors;
 import com.tradepost.procure.common.AuditWriter;
+import com.tradepost.procure.common.Codes;
 import com.tradepost.procure.common.ConflictException;
 import com.tradepost.procure.common.EvalContexts;
 import com.tradepost.procure.common.ExpressionService;
@@ -98,7 +99,7 @@ public class OrderService {
         if (order.deliveryHook() != null && !order.deliveryHook().isBlank()) {
             hookPolicy.require(order.deliveryHook());
         }
-        String code = Integer.toString(100000 + approvalCodes.nextInt(900000));
+        String code = Codes.digits(approvalCodes, 6);
         orders.markSubmitted(id, code);
         audit.append(Actors.current(), "order.submitted", order.poNumber());
     }
@@ -117,9 +118,15 @@ public class OrderService {
         return order.returnUrl();
     }
 
-    public String approvalLandingTarget(long id, String returnTo) {
-        get(id);
-        return returnTo == null ? "/api/orders/" + id : returnTo;
+    public String approvalLandingTarget(long id) {
+        Order order = get(id);
+        return order.returnUrl() == null ? "/api/orders/" + id : order.returnUrl();
+    }
+
+    public void updateReturnUrl(long id, String returnUrl) {
+        Order order = get(id);
+        orders.updateReturnUrl(id, returnUrl);
+        audit.append(Actors.current(), "order.return.updated", order.poNumber());
     }
 
     public Map<String, Object> send(long id) {
@@ -135,13 +142,14 @@ public class OrderService {
             try {
                 outbound.deliver(hook, payload);
                 orders.updateStatus(id, "SENT");
+                int serial = ThreadLocalRandom.current().nextInt(100000, 1000000);
+                events.publishEvent(new OrderSent(id, order.poNumber(), serial));
                 return Map.of("orderId", id, "status", "SENT", "attempts", attempt);
             } catch (RestClientException e) {
                 if (attempt == SEND_ATTEMPTS) {
                     throw e;
                 }
-                long pauseMs = 100 + ThreadLocalRandom.current().nextInt(100);
-                pause(pauseMs);
+                pause(150);
             }
         }
         throw new IllegalStateException("unreachable");

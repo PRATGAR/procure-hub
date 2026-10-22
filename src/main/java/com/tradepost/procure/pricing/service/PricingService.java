@@ -13,6 +13,8 @@ import com.tradepost.procure.pricing.repo.PricingRepository;
 import com.tradepost.procure.pricing.web.PricingDtos.CreateRuleRequest;
 import com.tradepost.procure.pricing.web.PricingDtos.PreviewRequest;
 import com.tradepost.procure.pricing.web.PricingDtos.QuoteRequest;
+import com.tradepost.procure.pricing.web.PricingDtos.QuoteResult;
+import com.tradepost.procure.pricing.web.PricingDtos.RuleRate;
 import com.tradepost.procure.pricing.web.PricingDtos.SimulateRequest;
 import java.util.List;
 import java.util.Map;
@@ -30,12 +32,14 @@ public class PricingService {
 
     private final PricingRepository prices;
     private final ExpressionService expressions;
+    private final RuleEngine engine;
     private final FxRates fx;
     private final ApplicationEventPublisher events;
     private final AuditWriter audit;
 
-    public PricingService(PricingRepository prices, ExpressionService expressions, FxRates fx,
+    public PricingService(PricingRepository prices, ExpressionService expressions, RuleEngine engine, FxRates fx,
                           ApplicationEventPublisher events, AuditWriter audit) {
+        this.engine = engine;
         this.prices = prices;
         this.expressions = expressions;
         this.fx = fx;
@@ -57,7 +61,7 @@ public class PricingService {
         return prices.rulesByScope(scope);
     }
 
-    public Map<String, Object> quote(QuoteRequest request) {
+    public QuoteResult quote(QuoteRequest request) {
         long unitCents = prices.unitPrice(request.sku());
         int tierBp = prices.tierBp(request.qty());
         int units = request.qty() * request.packSize();
@@ -66,12 +70,10 @@ public class PricingService {
         long bestBp = Math.max(tierBp, volumeBp);
         Long appliedRule = null;
         for (PriceRule rule : prices.activeRules(RuleScope.GLOBAL)) {
-            long rate = fx.rateMicro(rule.currency());
-            long inRuleCurrency = gross * 1_000_000L / rate;
-            QuoteFacts facts = new QuoteFacts(request.sku(), request.qty(), unitCents, inRuleCurrency,
+            QuoteFacts facts = new QuoteFacts(request.sku(), request.qty(), unitCents, gross,
                     request.currency().name());
             try {
-                Object discount = expressions.evaluate(rule.discountExpr(), EvalContexts.standard(Map.of()), facts);
+                Object discount = engine.discountFor(rule, facts);
                 if (discount instanceof Number number) {
                     long bp = Math.round(number.doubleValue() * 10_000);
                     if (bp > bestBp) {
@@ -85,7 +87,7 @@ public class PricingService {
         }
         long total = gross * (10_000 - bestBp) / 10_000;
         long id = prices.insertQuote(request.sku(), request.qty(), request.currency().name(), unitCents, total, appliedRule);
-        return Map.of("quoteId", id, "unitCents", unitCents, "totalCents", total, "discountBp", bestBp);
+        return new QuoteResult(id, unitCents, total, bestBp);
     }
 
     public String explain(long quoteId) {
@@ -110,6 +112,11 @@ public class PricingService {
 
     public long fxRate(String currency) {
         return fx.rateMicro(currency);
+    }
+
+    public RuleRate ruleRate(long ruleId) {
+        PriceRule rule = prices.findRule(ruleId);
+        return new RuleRate(ruleId, rule.currency(), fx.rateMicro(rule.currency()));
     }
 
     public Object simulate(SimulateRequest request) {

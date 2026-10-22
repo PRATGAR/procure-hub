@@ -17,6 +17,8 @@ public class SsoLinkRepository {
             rs.getString("provider"),
             rs.getString("external_id"),
             rs.getString("unit"),
+            rs.getString("team"),
+            rs.getString("metadata_url"),
             rs.getString("status"));
 
     private final JdbcTemplate jdbc;
@@ -25,10 +27,11 @@ public class SsoLinkRepository {
         this.jdbc = jdbc;
     }
 
-    public int insert(long userRef, SsoProvider provider, String externalId, OrgUnit unit) {
-        String sql = "INSERT INTO sso_links (user_ref, provider, external_id, unit, status) VALUES ("
-                + userRef + ", '" + provider.name() + "', ?, '" + unit.name() + "', 'ACTIVE')";
-        return jdbc.update(sql, externalId);
+    public int insert(long userRef, SsoProvider provider, String externalId, OrgUnit unit, String team,
+                      String metadataUrl) {
+        String sql = "INSERT INTO sso_links (user_ref, provider, external_id, unit, team, metadata_url, status) VALUES ("
+                + userRef + ", '" + provider.name() + "', ?, '" + unit.name() + "', ?, ?, 'ACTIVE')";
+        return jdbc.update(sql, externalId, team, metadataUrl);
     }
 
     public long lastIdFor(long userRef) {
@@ -38,7 +41,8 @@ public class SsoLinkRepository {
 
     public SsoLink find(long id) {
         List<SsoLink> found = jdbc.query(
-                "SELECT id, user_ref, provider, external_id, unit, status FROM sso_links WHERE id = ?", MAPPER, id);
+                "SELECT id, user_ref, provider, external_id, unit, team, metadata_url, status FROM sso_links WHERE id = ?",
+                MAPPER, id);
         return found.stream().findFirst().orElse(null);
     }
 }

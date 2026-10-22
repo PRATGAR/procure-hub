@@ -22,6 +22,30 @@ public final class PricingDtos {
             @NotBlank @Size(max = 12) String currency) {
     }
 
+    public record Created(long id) {
+    }
+
+    public record QuoteResult(long quoteId, long unitCents, long totalCents, long discountBp) {
+    }
+
+    public record Explanation(long quoteId, String explanation) {
+    }
+
+    public record PreviewResult(String result) {
+    }
+
+    public record FxRate(String currency, long rateMicro) {
+    }
+
+    public record RuleRate(long ruleId, String currency, long rateMicro) {
+    }
+
+    public record SimulationResult(String strategy, String result) {
+    }
+
+    public record ImportResult(int imported) {
+    }
+
     public record QuoteRequest(
             @NotBlank @Pattern(regexp = "^[A-Z0-9-]{4,24}$") String sku,
             @Min(1) @Max(100000) int qty,

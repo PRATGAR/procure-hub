@@ -16,9 +16,15 @@ import com.tradepost.procure.shipment.Shipment;
 import com.tradepost.procure.shipment.ShipmentSort;
 import com.tradepost.procure.shipment.ShipmentStatus;
 import com.tradepost.procure.shipment.repo.ShipmentRepository;
+import com.tradepost.procure.shipment.web.ShipmentDtos.CallbackApplied;
 import com.tradepost.procure.shipment.web.ShipmentDtos.CarrierEvent;
+import com.tradepost.procure.shipment.web.ShipmentDtos.CarrierLoad;
 import com.tradepost.procure.shipment.web.ShipmentDtos.CreateShipmentRequest;
 import com.tradepost.procure.shipment.web.ShipmentDtos.LabelFile;
+import com.tradepost.procure.shipment.web.ShipmentDtos.LabelRequested;
+import com.tradepost.procure.shipment.web.ShipmentDtos.NotifyUrlSaved;
+import com.tradepost.procure.shipment.web.ShipmentDtos.ShipmentDetail;
+import com.tradepost.procure.shipment.web.ShipmentDtos.TrackingRefresh;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
@@ -40,10 +46,12 @@ public class ShipmentService {
     private final ApplicationEventPublisher events;
     private final AuditWriter audit;
     private final TradepostProperties properties;
+    private final ShipmentNotifier notifier;
 
     public ShipmentService(ShipmentRepository shipments, OrderService orders, SearchSupport search, FileStore store,
                            OutboundHttp outbound, ApplicationEventPublisher events, AuditWriter audit,
-                           TradepostProperties properties) {
+                           TradepostProperties properties, ShipmentNotifier notifier) {
+        this.notifier = notifier;
         this.shipments = shipments;
         this.orders = orders;
         this.search = search;
@@ -56,10 +64,11 @@ public class ShipmentService {
 
     public long create(CreateShipmentRequest request) {
         orders.get(request.orderId());
-        if (shipments.trackingTaken(request.trackingNo())) {
+        String trackingNo = request.carrier().prefix() + request.serial();
+        if (shipments.trackingTaken(trackingNo)) {
             throw new ConflictException("the tracking number is already registered");
         }
-        long id = shipments.insert(request.orderId(), request.carrier().name(), request.trackingNo(), request.notes());
+        long id = shipments.insert(request.orderId(), request.carrier().name(), trackingNo, request.notes());
         audit.append(Actors.current(), "shipment.created", "shipment " + id);
         return id;
     }
@@ -69,22 +78,22 @@ public class ShipmentService {
         return search.page(LIST_SELECT, "", QueryFragments.orderBy(order.column(), dir), limit);
     }
 
-    public Map<String, Object> detail(long id) {
+    public ShipmentDetail detail(long id) {
         Shipment shipment = shipments.find(id);
         List<Map<String, Object>> peers = shipments.peersByLastStatus(id, String.valueOf(shipment.lastStatus()));
-        return Map.of("shipment", shipment, "peersWithSameStatus", peers, "events", shipments.events(id));
+        return new ShipmentDetail(shipment, peers, shipments.events(id));
     }
 
-    public Map<String, Object> carrierLoad(long id) {
+    public CarrierLoad carrierLoad(long id) {
         Shipment shipment = shipments.find(id);
-        return Map.of("carrier", shipment.carrier(), "openShipments", shipments.carrierLoad(shipment.carrier()));
+        return new CarrierLoad(shipment.carrier(), shipments.carrierLoad(shipment.carrier()));
     }
 
-    public Map<String, Object> requestLabel(long id) {
+    public LabelRequested requestLabel(long id) {
         Shipment shipment = shipments.find(id);
         String name = LabelNames.forShipment(shipment.id());
         shipments.updateLabel(id, name);
-        return Map.of("shipmentId", id, "label", name);
+        return new LabelRequested(id, name);
     }
 
     public LabelFile label(long id) throws IOException {
@@ -95,16 +104,16 @@ public class ShipmentService {
         return new LabelFile(shipment.labelName(), store.read(FileStore.LABELS, shipment.labelName()));
     }
 
-    public Map<String, Object> refresh(long id) {
+    public TrackingRefresh refresh(long id) {
         Shipment shipment = shipments.find(id);
         Carrier carrier = Carrier.valueOf(shipment.carrier());
         String base = properties.carrierBaseUrls().get(carrier.key());
         String url = base + UriUtils.encodePathSegment(shipment.trackingNo(), StandardCharsets.UTF_8);
         String body = outbound.fetchText(url);
-        return Map.of("shipmentId", id, "carrier", carrier.name(), "bytes", body == null ? 0 : body.length());
+        return new TrackingRefresh(id, carrier.name(), body == null ? 0 : body.length());
     }
 
-    public Map<String, Object> applyCallback(Carrier carrier, CarrierEvent event) {
+    public CallbackApplied applyCallback(Carrier carrier, CarrierEvent event) {
         Shipment shipment = shipments.findByTracking(carrier.name(), event.trackingNo())
                 .orElseThrow(() -> new NotFoundException("shipment", event.trackingNo()));
         shipments.insertEvent(shipment.id(), event.status(), event.detail());
@@ -112,22 +121,13 @@ public class ShipmentService {
         ShipmentStatus mapped = ShipmentStatus.fromCarrierText(event.status());
         shipments.updateStatus(shipment.id(), mapped);
         events.publishEvent(new ShipmentStatusChanged(shipment.id(), mapped));
-        return Map.of("shipmentId", shipment.id(), "status", mapped.name());
+        notifier.statusChanged(shipment, mapped);
+        return new CallbackApplied(shipment.id(), mapped.name());
     }
 
-    public String exportEvents(long id) {
+    public NotifyUrlSaved saveNotifyUrl(long id, String url) {
         shipments.find(id);
-        StringBuilder csv = new StringBuilder("status,detail,at\n");
-        for (Map<String, Object> row : shipments.events(id)) {
-            csv.append(row.get("STATUS")).append(',').append(row.get("DETAIL")).append(',')
-                    .append(row.get("AT_TIME")).append('\n');
-        }
-        return csv.toString();
-    }
-
-    public void requireFilename(String filename) {
-        if (filename == null || filename.isBlank()) {
-            throw new InvalidRequestException("a file name is required");
-        }
+        shipments.updateNotifyUrl(id, url.trim());
+        return new NotifyUrlSaved(id, true);
     }
 }

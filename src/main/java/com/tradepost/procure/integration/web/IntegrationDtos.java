@@ -20,6 +20,39 @@ public final class IntegrationDtos {
             @Pattern(regexp = "^(MD5|SHA-256)$") String sigAlg) {
     }
 
+    public record ContractRequest(@NotBlank @Size(max = 255) String fileName) {
+    }
+
+    public record Created(long id, String status) {
+    }
+
+    public record PingResult(String partner, int bytes) {
+    }
+
+    public record WebhookRegistered(long id, String secret) {
+    }
+
+    public record WebhookTested(long webhookId, boolean delivered) {
+    }
+
+    public record EventPublished(String partner, boolean accepted) {
+    }
+
+    public record InboundAccepted(long inboundId) {
+    }
+
+    public record Replayed(long inboundId, String event) {
+    }
+
+    public record ImportStaged(long batchId, String format) {
+    }
+
+    public record ImportDecoded(long batchId, String type, String value) {
+    }
+
+    public record ContractSaved(long partnerId, boolean saved) {
+    }
+
     public record RegisterWebhookRequest(
             @Min(1) long partnerId,
             @NotBlank @Size(max = 300) String url,

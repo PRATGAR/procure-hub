@@ -34,6 +34,6 @@ public class SupplierPortalController {
     @GetMapping("/{id}/contacts")
     public void contacts(@PathVariable long id, HttpServletResponse response) throws IOException {
         Supplier supplier = service.get(id);
-        writer.html(response, pages.contacts(supplier, service.contacts(id, "")));
+        writer.html(response, pages.contacts(supplier, service.contacts(id)));
     }
 }

@@ -12,6 +12,9 @@ INSERT INTO supplier_bank_accounts (supplier_id, holder, bic, iban_tail, status)
   (1, 'Nordparts GmbH', 'COBADEFFXXX', '4411', 'VERIFIED'),
   (2, 'Acme Freight Ltd', 'NWBKGB2LXXX', '9902', 'VERIFIED');
 
+INSERT INTO supplier_certificates (supplier_id, issuer, file_name) VALUES
+  (1, 'TUEV Sued', 'iso-9001.txt');
+
 INSERT INTO catalog_categories (code, name) VALUES
   ('fasteners', 'Fasteners'),
   ('packaging', 'Packaging'),

@@ -2,7 +2,7 @@ package com.tradepost.procure.catalog.service;
 
 import org.springframework.stereotype.Component;
 
-@Component("csv")
+@Component
 public class CsvFeedParser implements FeedParser {
 
     private final FeedItems items;

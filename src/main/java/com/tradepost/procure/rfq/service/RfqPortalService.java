@@ -10,8 +10,8 @@ import com.tradepost.procure.rfq.repo.InvitationRepository;
 import com.tradepost.procure.rfq.repo.RfqRepository;
 import com.tradepost.procure.rfq.web.InvitationToken;
 import com.tradepost.procure.rfq.web.RfqDtos.BidRequest;
+import com.tradepost.procure.rfq.web.RfqDtos.Landing;
 import com.tradepost.procure.rfq.web.RfqDtos.QuestionRequest;
-import java.util.Map;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -27,19 +27,13 @@ public class RfqPortalService {
         this.bids = bids;
     }
 
-    public Map<String, Object> landing(InvitationToken token) {
+    public Landing landing(InvitationToken token) {
         Invitation invitation = invitations.findByToken(token.value());
         Rfq rfq = rfqs.findById(invitation.rfqId());
         if ("SENT".equals(invitation.status())) {
             invitations.updateStatus(invitation.id(), "VIEWED");
         }
-        return Map.of("rfqId", rfq.id(), "title", rfq.title(), "status", rfq.status(),
-                "closesAt", String.valueOf(rfq.closesAt()), "invitation", invitation.status());
-    }
-
-    public void decline(String token) {
-        Invitation invitation = invitations.findByToken(token);
-        invitations.updateStatus(invitation.id(), "DECLINED");
+        return new Landing(rfq.id(), rfq.title(), rfq.status(), String.valueOf(rfq.closesAt()), invitation.status());
     }
 
     public long submitBid(InvitationToken token, String pin, BidRequest request) {

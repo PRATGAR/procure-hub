@@ -1,7 +1,7 @@
 package com.tradepost.procure.supplier.repo;
 
 import com.tradepost.procure.common.Inserts;
-import com.tradepost.procure.common.Terms;
+import com.tradepost.procure.common.SqlParts;
 import com.tradepost.procure.supplier.Contact;
 import java.util.HashMap;
 import java.util.List;
@@ -44,9 +44,15 @@ public class ContactRepository {
                 MAPPER, supplierId);
     }
 
-    public List<Contact> search(long supplierId, String q) {
-        String sql = "SELECT id, supplier_id, name, email, role, note FROM supplier_contacts WHERE supplier_id = ? AND name LIKE '%"
-                + Terms.normalize(q) + "%' ORDER BY name";
-        return jdbc.query(sql, MAPPER, supplierId);
+    public Contact find(long contactId) {
+        return jdbc.queryForObject("SELECT id, supplier_id, name, email, role, note FROM supplier_contacts WHERE id = ?",
+                MAPPER, contactId);
+    }
+
+    public List<Contact> sharingMailbox(long contactId, String mailbox) {
+        String condition = SqlParts.startsWith("email", mailbox + "@");
+        String sql = "SELECT id, supplier_id, name, email, role, note FROM supplier_contacts WHERE id <> ? AND "
+                + condition + " ORDER BY name";
+        return jdbc.query(sql, MAPPER, contactId);
     }
 }

@@ -1,6 +1,7 @@
 package com.tradepost.procure.settlement.repo;
 
 import com.tradepost.procure.common.Inserts;
+import com.tradepost.procure.common.SqlParts;
 import com.tradepost.procure.settlement.Invoice;
 import java.util.HashMap;
 import java.util.List;
@@ -34,8 +35,8 @@ public class InvoiceRepository {
         this.inserts = inserts;
     }
 
-    public boolean numberTaken(String number) {
-        String sql = "SELECT COUNT(*) FROM invoices WHERE number = '" + number + "'";
+    public boolean numberTaken(long sequence) {
+        String sql = "SELECT COUNT(*) FROM invoices WHERE number = 'INV-" + sequence + "'";
         Integer taken = jdbc.queryForObject(sql, Integer.class);
         return taken != null && taken > 0;
     }
@@ -58,8 +59,25 @@ public class InvoiceRepository {
     }
 
     public List<Map<String, Object>> sameReference(long id, String reference) {
-        String sql = "SELECT id, number, status FROM invoices WHERE reference = '" + reference + "' AND id <> " + id;
+        String sql = "SELECT id, number, status FROM invoices WHERE " + SqlParts.equalTo("reference", reference)
+                + " AND id <> " + id;
         return jdbc.queryForList(sql);
+    }
+
+    public void updateWatermark(long invoiceId, String watermark) {
+        jdbc.update("UPDATE invoices SET watermark = ? WHERE id = ?", watermark, invoiceId);
+    }
+
+    public String watermark(long invoiceId) {
+        return jdbc.queryForObject("SELECT watermark FROM invoices WHERE id = ?", String.class, invoiceId);
+    }
+
+    public void updateTemplate(long invoiceId, String template) {
+        jdbc.update("UPDATE invoices SET template = ? WHERE id = ?", template, invoiceId);
+    }
+
+    public String template(long invoiceId) {
+        return jdbc.queryForObject("SELECT template FROM invoices WHERE id = ?", String.class, invoiceId);
     }
 
     public void addPaid(long invoiceId, long amountCents) {

@@ -1,5 +1,6 @@
 package com.tradepost.procure.rfq.web;
 
+import com.tradepost.procure.common.NumericId;
 import com.tradepost.procure.common.PageWriter;
 import com.tradepost.procure.rfq.Bid;
 import com.tradepost.procure.rfq.Rfq;
@@ -57,6 +58,22 @@ public class RfqController {
         return service.invite(id, request);
     }
 
+    @GetMapping("/{id}/regional-peers")
+    public List<Map<String, Object>> regionalPeers(@PathVariable long id) {
+        return service.regionalPeers(id);
+    }
+
+    @GetMapping("/{id}/bids/summary")
+    public void bidsSummary(@PathVariable long id, HttpServletResponse response) throws IOException {
+        Rfq rfq = service.get(id);
+        writer.html(response, pages.bids(rfq, service.bidList(id)));
+    }
+
+    @GetMapping("/{id}/bids/{bidId}/duplicates")
+    public List<Bid> duplicateBids(@PathVariable long id, @PathVariable long bidId) {
+        return service.duplicateBids(id, bidId);
+    }
+
     @GetMapping("/{id}/questions/view")
     public void questionsView(@PathVariable long id, HttpServletResponse response) throws IOException {
         Rfq rfq = service.get(id);
@@ -69,7 +86,7 @@ public class RfqController {
     }
 
     @GetMapping("/{id}/bids/{bidId}")
-    public Bid bid(@PathVariable long id, @PathVariable long bidId) {
+    public Bid bid(@PathVariable NumericId id, @PathVariable NumericId bidId) {
         return service.bid(id, bidId);
     }
 }

@@ -16,7 +16,8 @@ public record TradepostProperties(
         Map<String, String> dispatchUrls,
         String checkoutUrl,
         String pspBaseUrl,
-        Security security) {
+        Security security,
+        Downloads downloads) {
 
     public record Storage(String root) {
     }
@@ -25,6 +26,9 @@ public record TradepostProperties(
     }
 
     public record Security(long pinSeed) {
+    }
+
+    public record Downloads(String mediaHeader) {
     }
 
     public record PartnerEndpoints(String events, String health, String catalog, String docs) {

@@ -1,15 +1,24 @@
 package com.tradepost.procure.supplier.web;
 
+import com.tradepost.procure.common.NumericId;
 import com.tradepost.procure.supplier.Contact;
 import com.tradepost.procure.supplier.Supplier;
 import com.tradepost.procure.supplier.service.SupplierService;
 import com.tradepost.procure.supplier.web.SupplierDtos.BankAccountRequest;
+import com.tradepost.procure.supplier.web.SupplierDtos.BankStatus;
+import com.tradepost.procure.supplier.web.SupplierDtos.CertificateRequest;
 import com.tradepost.procure.supplier.web.SupplierDtos.ContactRequest;
+import com.tradepost.procure.supplier.web.SupplierDtos.Created;
+import com.tradepost.procure.supplier.web.SupplierDtos.EntityId;
 import com.tradepost.procure.supplier.web.SupplierDtos.OnboardRequest;
 import com.tradepost.procure.supplier.web.SupplierDtos.ProfileRequest;
+import com.tradepost.procure.supplier.web.SupplierDtos.ProfileUpdated;
+import com.tradepost.procure.supplier.web.SupplierDtos.RegistryCheck;
+import com.tradepost.procure.supplier.web.SupplierDtos.WebsiteCheck;
+import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
+import java.io.IOException;
 import java.util.List;
-import java.util.Map;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -32,9 +41,9 @@ public class SupplierController {
     }
 
     @PostMapping
-    public ResponseEntity<Map<String, Object>> onboard(@Valid @RequestBody OnboardRequest request) {
+    public ResponseEntity<Created> onboard(@Valid @RequestBody OnboardRequest request) {
         long id = service.onboard(request);
-        return ResponseEntity.status(HttpStatus.CREATED).body(Map.of("id", id, "status", "PENDING"));
+        return ResponseEntity.status(HttpStatus.CREATED).body(new Created(id, "PENDING"));
     }
 
     @GetMapping
@@ -43,43 +52,67 @@ public class SupplierController {
         return service.search(q.value(), country);
     }
 
-    @GetMapping("/lookup")
-    public Map<String, Object> lookup(@RequestParam TaxId taxId) {
-        return service.lookupByTaxId(taxId.value());
-    }
-
     @GetMapping("/{id}")
-    public Supplier get(@PathVariable long id) {
+    public Supplier get(@PathVariable NumericId id) {
         return service.get(id);
     }
 
+    @GetMapping("/{id}/similar")
+    public List<Supplier> similar(@PathVariable long id) {
+        return service.similar(id);
+    }
+
+    @GetMapping("/{id}/registry-check")
+    public RegistryCheck registryCheck(@PathVariable long id) {
+        return service.registryCheck(id);
+    }
+
     @PutMapping("/{id}/profile")
-    public Map<String, Object> updateProfile(@PathVariable long id, @Valid @RequestBody ProfileRequest request) {
+    public ProfileUpdated updateProfile(@PathVariable long id, @Valid @RequestBody ProfileRequest request) {
         service.updateProfile(id, request);
-        return Map.of("id", id, "updated", true);
+        return new ProfileUpdated(id, true);
     }
 
     @PostMapping("/{id}/contacts")
-    public ResponseEntity<Map<String, Object>> addContact(@PathVariable long id,
-                                                          @Valid @RequestBody ContactRequest request) {
+    public ResponseEntity<EntityId> addContact(@PathVariable long id,
+                                               @Valid @RequestBody ContactRequest request) {
         long contactId = service.addContact(id, request);
-        return ResponseEntity.status(HttpStatus.CREATED).body(Map.of("id", contactId));
+        return ResponseEntity.status(HttpStatus.CREATED).body(new EntityId(contactId));
     }
 
     @GetMapping("/{id}/contacts")
-    public List<Contact> contacts(@PathVariable long id, @RequestParam(defaultValue = "") String q) {
-        return service.contacts(id, q);
+    public List<Contact> contacts(@PathVariable long id) {
+        return service.contacts(id);
+    }
+
+    @GetMapping("/contacts/{contactId}/aliases")
+    public List<Contact> aliases(@PathVariable long contactId) {
+        return service.aliases(contactId);
     }
 
     @PutMapping("/{id}/bank-account")
-    public Map<String, Object> updateBankAccount(@PathVariable long id,
-                                                 @Valid @RequestBody BankAccountRequest request) {
+    public BankStatus updateBankAccount(@PathVariable long id,
+                                        @Valid @RequestBody BankAccountRequest request) {
         service.updateBankAccount(id, request);
-        return Map.of("supplierId", id, "status", "PENDING");
+        return new BankStatus(id, "PENDING");
     }
 
     @PostMapping("/{id}/website-check")
-    public Map<String, Object> checkWebsite(@PathVariable long id) {
+    public WebsiteCheck checkWebsite(@PathVariable long id) {
         return service.checkWebsite(id);
+    }
+
+    @PostMapping("/{id}/certificates")
+    public ResponseEntity<EntityId> addCertificate(@PathVariable long id,
+                                                   @Valid @RequestBody CertificateRequest request) {
+        long certificateId = service.addCertificate(id, request);
+        return ResponseEntity.status(HttpStatus.CREATED).body(new EntityId(certificateId));
+    }
+
+    @GetMapping("/{id}/certificates/{certificateId}/file")
+    public byte[] certificateFile(@PathVariable long id, @PathVariable long certificateId,
+                                  HttpServletResponse response) throws IOException {
+        response.setContentType("application/octet-stream");
+        return service.certificateFile(id, certificateId);
     }
 }

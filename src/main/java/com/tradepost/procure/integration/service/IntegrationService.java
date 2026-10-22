@@ -2,15 +2,25 @@ package com.tradepost.procure.integration.service;
 
 import com.tradepost.procure.common.Actors;
 import com.tradepost.procure.common.AuditWriter;
+import com.tradepost.procure.common.Codes;
 import com.tradepost.procure.common.ConflictException;
+import com.tradepost.procure.common.InvalidRequestException;
+import com.tradepost.procure.common.NotFoundException;
 import com.tradepost.procure.common.OutboundHttp;
 import com.tradepost.procure.integration.Partner;
 import com.tradepost.procure.integration.PartnerCode;
 import com.tradepost.procure.integration.Webhook;
 import com.tradepost.procure.integration.repo.PartnerRepository;
+import com.tradepost.procure.integration.web.IntegrationDtos.ContractSaved;
 import com.tradepost.procure.integration.web.IntegrationDtos.CreatePartnerRequest;
+import com.tradepost.procure.integration.web.IntegrationDtos.EventPublished;
 import com.tradepost.procure.integration.web.IntegrationDtos.PartnerEventRequest;
+import com.tradepost.procure.integration.web.IntegrationDtos.PingResult;
 import com.tradepost.procure.integration.web.IntegrationDtos.RegisterWebhookRequest;
+import com.tradepost.procure.integration.web.IntegrationDtos.WebhookRegistered;
+import com.tradepost.procure.integration.web.IntegrationDtos.WebhookTested;
+import java.io.IOException;
+import java.nio.file.Path;
 import java.security.SecureRandom;
 import java.util.HexFormat;
 import java.util.Map;
@@ -27,9 +37,11 @@ public class IntegrationService {
     private final OutboundHttp outbound;
     private final AuditWriter audit;
     private final Random secrets;
+    private final ContractFiles contracts;
 
     public IntegrationService(PartnerRepository partners, PartnerUrls urls, OutboundHttp outbound, AuditWriter audit,
-                              @Qualifier("webhookSecrets") Random secrets) {
+                              @Qualifier("webhookSecrets") Random secrets, ContractFiles contracts) {
+        this.contracts = contracts;
         this.partners = partners;
         this.urls = urls;
         this.outbound = outbound;
@@ -57,47 +69,67 @@ public class IntegrationService {
         return partners.findByCode(code.name());
     }
 
-    public Map<String, Object> ping(long partnerId) {
+    public PingResult ping(long partnerId) {
         Partner partner = partners.find(partnerId);
         String body = outbound.fetchText(partner.baseUrl() + "/ping");
-        return Map.of("partner", partner.code(), "bytes", body == null ? 0 : body.length());
+        return new PingResult(partner.code(), body == null ? 0 : body.length());
     }
 
-    public Map<String, Object> registerWebhook(RegisterWebhookRequest request) {
+    public WebhookRegistered registerWebhook(RegisterWebhookRequest request) {
         partners.find(request.partnerId());
-        String secret = Long.toHexString(secrets.nextLong());
+        String secret = Codes.hex(secrets, 8);
         long id = partners.insertWebhook(request.partnerId(), request.url().trim(), request.eventType(), secret);
         audit.append(Actors.current(), "webhook.registered", "webhook " + id);
-        return Map.of("id", id, "secret", secret);
+        return new WebhookRegistered(id, secret);
     }
 
-    public Map<String, Object> testWebhook(long id) {
+    public WebhookTested testWebhook(long id) {
         Webhook webhook = partners.findWebhook(id);
         Map<String, Object> payload = Map.of("event", "webhook.test", "webhookId", webhook.id());
         try {
             String body = outbound.deliver(webhook.url(), payload);
             partners.recordDelivery(id, 200, body == null ? "" : body.substring(0, Math.min(body.length(), 180)));
-            return Map.of("webhookId", id, "delivered", true);
+            return new WebhookTested(id, true);
         } catch (RestClientException e) {
             partners.recordDelivery(id, 599, "delivery failed");
-            return Map.of("webhookId", id, "delivered", false);
+            return new WebhookTested(id, false);
         }
     }
 
-    public Map<String, Object> publishEvent(PartnerCode code, PartnerEventRequest request) {
+    public EventPublished publishEvent(PartnerCode code, PartnerEventRequest request) {
         String body = outbound.deliver(urls.events(code),
                 Map.of("eventType", request.eventType(), "body", request.body() == null ? "" : request.body()));
-        return Map.of("partner", code.name(), "accepted", body != null);
+        return new EventPublished(code.name(), body != null);
     }
 
-    public Map<String, Object> health(PartnerCode code) {
+    public PingResult health(PartnerCode code) {
         String body = outbound.fetchText(urls.health(code));
-        return Map.of("partner", code.name(), "bytes", body == null ? 0 : body.length());
+        return new PingResult(code.name(), body == null ? 0 : body.length());
     }
 
-    public Map<String, Object> sync(PartnerCode code) {
+    public PingResult sync(PartnerCode code) {
         byte[] catalog = outbound.download(urls.catalog(code));
-        return Map.of("partner", code.name(), "bytes", catalog == null ? 0 : catalog.length);
+        return new PingResult(code.name(), catalog == null ? 0 : catalog.length);
+    }
+
+    public ContractSaved saveContractFile(long partnerId, String fileName) {
+        partners.find(partnerId);
+        String name = fileName.trim();
+        if (name.startsWith("/") || name.startsWith("\\") || Path.of(name).isAbsolute()) {
+            throw new InvalidRequestException("contract files are stored relative to the document folder");
+        }
+        partners.updateContractFile(partnerId, name);
+        audit.append(Actors.current(), "partner.contract.saved", "partner " + partnerId);
+        return new ContractSaved(partnerId, true);
+    }
+
+    public byte[] contract(long partnerId) throws IOException {
+        partners.find(partnerId);
+        String fileName = partners.contractFile(partnerId);
+        if (fileName == null || fileName.isBlank()) {
+            throw new NotFoundException("contract for partner", partnerId);
+        }
+        return contracts.open(fileName);
     }
 
     public String docsUrl(PartnerCode code) {

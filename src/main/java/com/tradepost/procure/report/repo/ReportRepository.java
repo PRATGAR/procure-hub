@@ -1,7 +1,9 @@
 package com.tradepost.procure.report.repo;
 
 import com.tradepost.procure.common.Inserts;
+import com.tradepost.procure.common.SqlParts;
 import com.tradepost.procure.report.ReportRun;
+import com.tradepost.procure.report.ReportSchedule;
 import com.tradepost.procure.report.SavedFilter;
 import com.tradepost.procure.report.SavedReport;
 import jakarta.persistence.EntityManager;
@@ -65,12 +67,19 @@ public class ReportRepository {
     }
 
     public List<SavedReport> search(String q) {
-        String sql = "SELECT id, name, entity, where_clause, description, owner FROM saved_reports WHERE name LIKE '%" + q + "%' ORDER BY id";
+        return jdbc.query("SELECT id, name, entity, where_clause, description, owner FROM saved_reports WHERE name LIKE ? ORDER BY id",
+                REPORT_MAPPER, "%" + q + "%");
+    }
+
+    public List<SavedReport> byNameLike(String stem) {
+        String condition = SqlParts.contains("name", stem);
+        String sql = "SELECT id, name, entity, where_clause, description, owner FROM saved_reports WHERE "
+                + condition + " ORDER BY id";
         return jdbc.query(sql, REPORT_MAPPER);
     }
 
     public int runReport(String table, String whereClause) {
-        String sql = "SELECT id FROM " + table + " WHERE " + whereClause;
+        String sql = SqlParts.selectIds(table, whereClause);
         Query reportQuery = em.createNativeQuery(sql);
         return reportQuery.getResultList().size();
     }
@@ -114,6 +123,12 @@ public class ReportRepository {
     public List<ReportRun> recentRuns(int limit) {
         String sql = "SELECT id, report_id, file_name, row_count, status FROM report_runs ORDER BY id DESC LIMIT " + limit;
         return jdbc.query(sql, RUN_MAPPER);
+    }
+
+    public ReportSchedule findSchedule(long id) {
+        return jdbc.queryForObject("SELECT id, report_id, recipient, callback_url, status FROM report_schedules WHERE id = ?",
+                (rs, n) -> new ReportSchedule(rs.getLong("id"), rs.getLong("report_id"), rs.getString("recipient"),
+                        rs.getString("callback_url"), rs.getString("status")), id);
     }
 
     public long insertSchedule(long reportId, String recipient, String callbackUrl) {

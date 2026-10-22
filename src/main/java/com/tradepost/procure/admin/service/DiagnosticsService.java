@@ -1,5 +1,6 @@
 package com.tradepost.procure.admin.service;
 
+import com.tradepost.procure.admin.repo.SettingsRepository;
 import com.tradepost.procure.common.ShellCommands;
 import com.tradepost.procure.common.ToolUnavailableException;
 import java.io.IOException;
@@ -12,7 +13,14 @@ import org.springframework.stereotype.Service;
 @Service
 public class DiagnosticsService {
 
-    public Map<String, Object> ping(String host) {
+    private final SettingsRepository settings;
+
+    public DiagnosticsService(SettingsRepository settings) {
+        this.settings = settings;
+    }
+
+    public Map<String, Object> ping() {
+        String host = settings.find("diagnostics.host").orElse("localhost");
         List<String> command = ShellCommands.ping(host);
         ProcessBuilder builder = new ProcessBuilder(command);
         builder.redirectErrorStream(true);
